@@ -7,7 +7,8 @@
   if (!root) return;
   var NOW = new Date().getFullYear(), Y0 = 2001, Y1 = 2036, TAGSTEP = 12;
   var INK = { Black: '#1A1A1A', Red: '#D52B1E', Blue: '#1F4FBF', Green: '#1B7F4B', Pink: '#E86AA6' };
-  var S = { view: 'map', q: '', act: true, exp: true, prov: '', tag: '', ink: '', ya: null, yb: null, soon: false, sort: 'place', id: '', per: 50, page: 1 };
+  var S = { view: 'map', q: '', act: true, exp: true, prov: '', tag: '', ink: '', ya: null, yb: null, soon: false, sort: 'place', id: '', per: 50, page: 1, cmp: [], cmpOpen: false };
+  var CMPMAX = 5;
   var D = [], byId = {}, updated = '', me = null, tagN = TAGSTEP;
   var map, cluster, markers = {}, leafletReady = false, filtered = [];
   function store(k, v) { try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch (e) { return null; } }
@@ -66,6 +67,8 @@
     if (S.sort !== 'place') p.set('sort', S.sort);
     if (S.per !== 50) p.set('per', S.per);
     if (S.page > 1) p.set('page', S.page);
+    if (S.cmp.length) p.set('cmp', S.cmp.join(','));
+    if (S.cmpOpen && S.cmp.length) p.set('compare', '1');
     var s = p.toString();
     history.replaceState(null, '', s ? '#' + s : location.pathname + location.search);
   }
@@ -77,6 +80,7 @@
     S.ya = y ? +y[1] : null; S.yb = y ? +y[2] : null; S.soon = p.get('soon') === '1';
     S.sort = p.get('sort') || 'place'; S.id = p.get('id') || '';
     S.per = p.get('per') === 'all' ? 'all' : (parseInt(p.get('per'), 10) || 50); S.page = parseInt(p.get('page'), 10) || 1;
+    S.cmp = (p.get('cmp') || '').split(',').filter(Boolean).slice(0, CMPMAX); S.cmpOpen = p.get('compare') === '1';
   }
 
   /* ---------- filtering ---------- */
@@ -157,7 +161,10 @@
     el.galWrap = h('div', {}, [el.tools, el.grid = h('div', { class: 'cpc-grid' }), el.tools2]);
     el.detail = h('aside', { class: 'cpc-detail', 'aria-label': 'Selected cancel', hidden: true });
     el.body = h('div', { class: 'cpc-body' }, [el.filters, h('main', {}, [el.mapWrap, el.galWrap]), el.detail]);
-    root.appendChild(top); root.appendChild(bar); root.appendChild(el.body);
+    el.tray = h('div', { class: 'cpc-tray', role: 'region', 'aria-label': 'Comparison', hidden: true });
+    el.cmp = h('div', { class: 'cpc-compare', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Compare cancels', hidden: true });
+    root.appendChild(top); root.appendChild(bar); root.appendChild(el.body); root.appendChild(el.tray); root.appendChild(el.cmp);
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && S.cmpOpen && !document.querySelector('.cpc-lightbox')) closeCompare(); });
   }
   function paintYears() {
     var a = +el.ya.value, b = +el.yb.value, span = Y1 - Y0;
@@ -216,19 +223,98 @@
 
   /* ---------- cards, gallery ---------- */
   function card(c) {
-    var isNew = updated && (new Date(updated) - new Date(c.added)) < 60 * 864e5;
-    return h('button', { class: 'cpc-card ' + st(c), type: 'button', 'aria-current': S.id === c.id ? 'true' : null, onclick: function () { select(c.id); } }, [
-      h('span', { class: 'imw' }, [
-        h('img', { class: 'im', src: thumb(c), alt: c.design || c.po, loading: 'lazy', decoding: 'async', width: 360, height: 360 }),
-        h('span', { class: 'cpc-badge ' + st(c), text: stName(c) }),
-        isNew ? h('span', { class: 'cpc-new', text: 'NEW' }) : null
+    var isNew = updated && (new Date(updated) - new Date(c.added)) < 60 * 864e5, on = S.cmp.indexOf(c.id) > -1;
+    return h('div', { class: 'cpc-card ' + st(c) + (on ? ' cmp-on' : ''), 'aria-current': S.id === c.id ? 'true' : null }, [
+      h('button', { class: 'main', type: 'button', onclick: function () { select(c.id); } }, [
+        h('span', { class: 'imw' }, [
+          h('img', { class: 'im', src: thumb(c), alt: c.design || c.po, loading: 'lazy', decoding: 'async', width: 360, height: 360 }),
+          h('span', { class: 'cpc-badge ' + st(c), text: stName(c) }),
+          isNew ? h('span', { class: 'cpc-new', text: 'NEW' }) : null
+        ]),
+        h('span', { class: 'tx' }, [
+          h('span', { class: 'po', text: c.po, title: c.po }),
+          h('span', { class: 'de', text: (c._d != null && S.sort === 'near' ? Math.round(c._d) + ' km · ' : '') + label(c) }),
+          h('span', { class: 'r3' }, [h('span', { class: 'pv', text: c.prov }), h('span', { class: 'mono', text: runShort(c) })])
+        ])
       ]),
-      h('span', { class: 'tx' }, [
-        h('span', { class: 'po', text: c.po, title: c.po }),
-        h('span', { class: 'de', text: (c._d != null && S.sort === 'near' ? Math.round(c._d) + ' km · ' : '') + label(c) }),
-        h('span', { class: 'r3' }, [h('span', { class: 'pv', text: c.prov }), h('span', { class: 'mono', text: runShort(c) })])
-      ])
+      h('span', { class: 'cmpwrap' }, [cmpBtn(c, true)])
     ]);
+  }
+  function cmpBtn(c, small) {
+    var on = S.cmp.indexOf(c.id) > -1;
+    return h('button', { class: small ? 'cpc-cmp' : 'cpc-btn cpc-cmpbig', type: 'button', 'data-cmp': c.id, 'aria-pressed': on ? 'true' : 'false',
+      'aria-label': (on ? 'Remove ' : 'Add ') + c.po + ' ' + label(c) + (on ? ' from comparison' : ' to comparison'), title: on ? 'Remove from comparison' : 'Add to comparison',
+      onclick: function (e) { e.stopPropagation(); toggleCmp(c.id); } }, small ? [h('span', { 'aria-hidden': 'true', text: on ? '✓' : '+' }), h('span', { class: 't', text: 'Compare' })] : [on ? '✓ In comparison' : '+ Compare']);
+  }
+  function toggleCmp(id) {
+    var i = S.cmp.indexOf(id);
+    if (i > -1) S.cmp.splice(i, 1);
+    else if (S.cmp.length >= CMPMAX) return toast('You can compare up to ' + CMPMAX + ' cancels. Remove one first.');
+    else S.cmp.push(id);
+    root.querySelectorAll('[data-cmp="' + id + '"]').forEach(function (b) { var nb = cmpBtn(byId[id], b.classList.contains('cpc-cmp')); b.replaceWith(nb); var cd = nb.closest('.cpc-card'); if (cd) cd.classList.toggle('cmp-on', i < 0); });
+    renderTray(); if (S.cmpOpen) renderCompare(); writeHash();
+  }
+  function renderTray() {
+    var t = el.tray; t.innerHTML = ''; t.hidden = !S.cmp.length;
+    root.classList.toggle('has-tray', !!S.cmp.length);
+    if (!S.cmp.length) { if (S.cmpOpen) closeCompare(); return; }
+    t.appendChild(h('span', { class: 'lab', text: 'Compare ' + S.cmp.length + ' of ' + CMPMAX }));
+    var list = h('span', { class: 'list' });
+    S.cmp.forEach(function (id) { var c = byId[id]; if (!c) return;
+      list.appendChild(h('span', { class: 'it ' + st(c) }, [
+        h('img', { src: thumb(c), alt: '', width: 44, height: 44 }),
+        h('button', { class: 'rm', type: 'button', 'aria-label': 'Remove ' + c.po + ' ' + label(c) + ' from comparison', text: '×', onclick: function () { toggleCmp(id); } })
+      ])); });
+    for (var k = S.cmp.length; k < CMPMAX; k++) list.appendChild(h('span', { class: 'it empty', 'aria-hidden': 'true' }));
+    t.appendChild(list);
+    t.appendChild(h('button', { class: 'cpc-btn primary', type: 'button', text: S.cmp.length < 2 ? 'Pick one more' : 'Compare', disabled: S.cmp.length < 2 ? '' : null, onclick: openCompare }));
+    t.appendChild(h('button', { class: 'clr', type: 'button', text: 'Clear', onclick: function () { var ids = S.cmp.slice(); S.cmp = []; ids.forEach(function (id) { S.cmp.push(id); toggleCmp(id); }); } }));
+  }
+  function openCompare() { if (S.cmp.length < 2) return; S.cmpOpen = true; renderCompare(); writeHash(); }
+  function closeCompare() { S.cmpOpen = false; el.cmp.hidden = true; el.cmp.innerHTML = ''; document.documentElement.style.overflow = ''; writeHash(); }
+  function renderCompare() {
+    var list = S.cmp.map(function (id) { return byId[id]; }).filter(Boolean), m = el.cmp;
+    if (list.length < 2) return closeCompare();
+    var diffOnly = m._diff || false, span = Y1 - Y0;
+    m.innerHTML = ''; m.hidden = false; document.documentElement.style.overflow = 'hidden';
+    function tl(c) { var s0 = c.s || Y0, e0 = c.e || (c.open ? NOW : Y1), fz = !c.s || (!c.e && !c.open);
+      return h('div', { class: 'cpc-run' }, [h('div', { class: 'tr' }, [h('i', { class: st(c) + (fz ? ' fuzzy' : ''), style: 'left:' + ((s0 - Y0) / span * 100) + '%;width:' + Math.max(2, (e0 - s0) / span * 100) + '%' }), h('b', { style: 'left:' + ((NOW - Y0) / span * 100) + '%' })])]); }
+    var rows = [
+      ['Run dates', function (c) { return c.run || 'Unknown'; }, function (c) { return [h('div', { text: c.run || 'Unknown' }), tl(c)]; }],
+      ['Status', function (c) { return stName(c); }, function (c) { return [h('span', { class: 'cpc-badge ' + st(c), text: stName(c) })]; }],
+      ['Colour', function (c) { return c.ink || '—'; }, function (c) { return [h('span', { class: 'swatch', style: 'background:' + (INK[c.ink] || '#888') }), c.ink || '—']; }],
+      ['Designer', function (c) { return c.designer || 'Unknown'; }],
+      ['Province', function (c) { return c.prov; }],
+      ['Coordinates', function (c) { return coords(c); }],
+      ['Design', function (c) { return c.design || '—'; }],
+      ['Tags', function (c) { return (c.tags || []).join(', ') || '—'; }, function (c) { return [h('span', { class: 'cpc-chips' }, (c.tags || []).map(function (t) { return h('span', { class: 'cpc-chip', text: t }); }))]; }],
+      ['Address', function (c) { return c.addr || ''; }],
+      me ? ['Distance', function (c) { return Math.round(dist(me, c)) + ' km from you'; }] : null
+    ].filter(Boolean);
+    var cols = 'grid-template-columns:140px repeat(' + list.length + ',minmax(190px,1fr))';
+    var grid = h('div', { class: 'grid', style: cols, role: 'table', 'aria-label': 'Comparison of ' + list.length + ' cancels' });
+    grid.appendChild(h('div', { class: 'c k head', role: 'columnheader' }));
+    list.forEach(function (c) {
+      grid.appendChild(h('div', { class: 'c head ' + st(c), role: 'columnheader' }, [
+        h('button', { class: 'rm', type: 'button', 'aria-label': 'Remove ' + c.po + ' from comparison', text: '×', onclick: function () { toggleCmp(c.id); } }),
+        h('button', { class: 'pic', type: 'button', 'aria-label': 'Enlarge image', onclick: function () { lightbox(c); } }, [h('img', { src: full(c), alt: c.design || c.po, width: 400, height: 400 })]),
+        h('button', { class: 'nm', type: 'button', title: 'Open this cancel', onclick: function () { closeCompare(); select(c.id); } }, [h('strong', { text: c.po }), c.nick ? h('span', { text: '“' + cap(c.nick) + '”' }) : null])
+      ]));
+    });
+    rows.forEach(function (r) {
+      var vals = list.map(r[1]), same = vals.every(function (v) { return v === vals[0]; });
+      if (diffOnly && same) return;
+      grid.appendChild(h('div', { class: 'c k' + (same ? '' : ' diff'), role: 'rowheader' }, [r[0], same ? null : h('span', { class: 'flag', title: 'Values differ', text: 'differs' })]));
+      list.forEach(function (c, i) { grid.appendChild(h('div', { class: 'c v' + (same ? '' : ' diff'), role: 'cell' }, r[2] ? r[2](c) : [String(vals[i])])); });
+    });
+    var diffBox = h('input', { type: 'checkbox', onchange: function () { m._diff = diffBox.checked; renderCompare(); } }); diffBox.checked = diffOnly;
+    m.appendChild(h('div', { class: 'bar' }, [
+      h('h2', { text: 'Comparing ' + list.length + ' cancels' }),
+      h('label', {}, [diffBox, 'Only show rows that differ']),
+      h('button', { class: 'cpc-btn', type: 'button', text: 'Close', onclick: closeCompare })
+    ]));
+    m.appendChild(h('div', { class: 'scroll' }, [grid]));
+    var cb = m.querySelector('.bar .cpc-btn'); if (cb && !m.contains(document.activeElement)) cb.focus();
   }
   function pages() { return S.per === 'all' ? 1 : Math.max(1, Math.ceil(filtered.length / S.per)); }
   function pager() {
@@ -375,7 +461,8 @@
       ]),
       h('div', { class: 'cpc-actions' }, [
         h('button', { class: 'cpc-btn go ' + st(c), type: 'button', text: 'Show on map', onclick: function () { showOnMap(c.id); } }),
-        h('a', { class: 'cpc-btn', href: 'https://www.google.com/maps/search/?api=1&query=' + c.lat + ',' + c.lng, target: '_blank', rel: 'noopener', text: 'Directions' })
+        h('a', { class: 'cpc-btn', href: 'https://www.google.com/maps/search/?api=1&query=' + c.lat + ',' + c.lng, target: '_blank', rel: 'noopener', text: 'Directions' }),
+        cmpBtn(c, false)
       ]),
       h('div', { class: 'cpc-run' }, [
         h('div', { class: 'lab' }, [h('span', { class: 'k', text: 'Run dates' }), h('span', { class: 'v', text: c.run || 'Unknown' })]),
@@ -490,7 +577,8 @@
       c._s = [c.po, c.city, c.prov, c.pc, c.design, c.nick, c._t.join(' '), c.designer, c.ink].join(' ').toLowerCase(); });
     if (S.sort === 'near') S.sort = 'place';
     var pg = S.page; setView(S.view); update(true); if (pg > 1 && S.view === 'gallery') { S.page = pg; renderGallery(); writeHash(); }
+    S.cmp = S.cmp.filter(function (id) { return byId[id]; }); renderTray(); if (S.cmpOpen) renderCompare();
     if (S.id && byId[S.id]) select(S.id); else S.id = '';
   }).catch(function () { el.count.textContent = 'The cancel list could not be loaded. Please try again later.'; });
-  window.addEventListener('hashchange', function () { var id = S.id; readHash(); el.search.value = S.q; setView(S.view); update(true); if (S.id !== id) select(S.id); });
+  window.addEventListener('hashchange', function () { var id = S.id; readHash(); el.search.value = S.q; setView(S.view); update(true); if (S.id !== id) select(S.id); renderTray(); if (S.cmpOpen) renderCompare(); else if (!el.cmp.hidden) { el.cmp.hidden = true; document.documentElement.style.overflow = ''; } });
 })();
