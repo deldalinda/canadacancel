@@ -98,7 +98,7 @@
     return true;
   }
   var SORTS = { prov: ['Province', 'A → Z', 'Z → A'], po: ['Post office', 'A → Z', 'Z → A'], added: ['Added time', 'Earliest first', 'Latest first'],
-    run: ['Run dates', 'Earliest first', 'Latest first'], near: ['Distance from me', 'Nearest first', 'Farthest first'] };
+    run: ['Run dates', 'Earliest first', 'Latest first'], lng: ['East ↔ West', 'West → East', 'East → West'] };
   function defDir(k) { return k === 'added' ? -1 : 1; }
   function paintSort() {
     el.sort.value = S.sort;
@@ -107,13 +107,12 @@
     el.sortDir.setAttribute('aria-label', 'Order: ' + (up ? t[1] : t[2]) + '. Click to reverse');
   }
   function sortList(list) {
-    if (S.sort === 'near' && me) list.forEach(function (c) { c._d = dist(me, c); });
     var d = S.dir, key = {
       prov: function (c) { return c.prov; },
       po: function (c) { return c.po; },
       added: function (c) { return c.added || null; },
       run: function (c) { return c.s || null; },
-      near: function (c) { return c._d != null ? c._d : null; }
+      lng: function (c) { return c.lng != null ? c.lng : null; }
     }[S.sort] || function (c) { return c.prov; };
     return list.slice().sort(function (a, b) {
       var x = key(a), y = key(b);
@@ -154,7 +153,6 @@
     el.yDual = h('div', { class: 'cpc-dual' }, [h('span', { class: 'trk' }), el.yFill, el.ya, el.yb]);
     el.yOut = h('output', { class: 'mono' });
     el.sort = h('select', { class: 'cpc-btn', 'aria-label': 'Sort by', onchange: function () {
-      if (el.sort.value === 'near' && !me) { el.sort.value = S.sort; return locate(); }
       S.sort = el.sort.value; S.dir = defDir(S.sort); go(); } },
       Object.keys(SORTS).map(function (k) { return h('option', { value: k, text: SORTS[k][0] }); }));
     el.sortDir = h('button', { class: 'cpc-btn cpc-dir', type: 'button', onclick: function () { S.dir = -S.dir; go(); } });
@@ -265,7 +263,7 @@
         ]),
         h('span', { class: 'tx' }, [
           h('span', { class: 'po', text: c.po, title: c.po }),
-          h('span', { class: 'de', text: (c._d != null && S.sort === 'near' ? Math.round(c._d) + ' km · ' : '') + label(c) }),
+          h('span', { class: 'de', text: label(c) }),
           h('span', { class: 'r3' }, [h('span', { class: 'pv', text: c.prov }), h('span', { class: 'mono', text: runShort(c) })])
         ])
       ]),
@@ -406,7 +404,7 @@
         var b = h('button', { class: 'cpc-tlr', type: 'button', 'aria-current': S.id === c.id ? 'true' : null, 'aria-label': c.po + ', ' + label(c) + ', ' + stName(c) + ', ' + (c.run || 'dates unknown'),
           onclick: function () { select(c.id); } }, [
           h('span', { class: 'who' }, [h('img', { src: thumb(c), alt: '', loading: 'lazy', decoding: 'async', width: 46, height: 46 }),
-            h('span', { class: 'nm' }, [h('strong', { text: c.po }), h('small', { text: label(c) }), h('small', { class: 'pv', text: c.prov + (c._d != null && S.sort === 'near' ? ' · ' + Math.round(c._d) + ' km' : '') })])]),
+            h('span', { class: 'nm' }, [h('strong', { text: c.po }), h('small', { text: label(c) }), h('small', { class: 'pv', text: c.prov })])]),
           h('span', { class: 'tk', style: '--step:' + step }, [h('b', { style: 'left:' + x(NOW) + '%' })].concat(
             segs.map(function (q) { return h('i', { class: q[2], style: 'left:' + x(q[0]) + '%;width:' + Math.max(0.8, x(q[1]) - x(q[0])) + '%' }); }),
             [h('em', { style: 'left:' + lx + '%', text: c.run || runShort(c).replace('–', ' – ') })]))
@@ -637,9 +635,9 @@
   function locate() {
     if (!navigator.geolocation) return toast('Location is not available in this browser');
     navigator.geolocation.getCurrentPosition(function (p) {
-      me = { lat: p.coords.latitude, lng: p.coords.longitude }; S.sort = 'near'; S.dir = 1; go();
+      me = { lat: p.coords.latitude, lng: p.coords.longitude }; renderDetail();
       if (leafletReady && S.view === 'map') map.setView([me.lat, me.lng], 8);
-      toast('Sorted by distance from you');
+      toast('Showing the map around you');
     }, function () { toast('Could not get your location'); }, { timeout: 8000 });
   }
   function fname(c) { return (c.prov + '/' + c.po + (c.nick ? ' - ' + c.nick : '') + ' - ' + c.id.slice(-5)).replace(/[\\:*?"<>|]+/g, '').replace(/\s+/g, ' ') + '.jpg'; }
@@ -698,7 +696,7 @@
     el.sub.textContent = D.length + ' postmarks from ' + Object.keys(nP).length + ' provinces and territories';
     D.forEach(function (c, i) { c._o = i; byId[c.id] = c; c._t = (c.tags || []).map(function (t) { return t.toLowerCase(); });
       c._s = [c.po, c.city, c.prov, c.pc, c.design, c.nick, c._t.join(' '), c.designer, c.ink].join(' ').toLowerCase(); });
-    if (S.sort === 'near') { S.sort = 'prov'; S.dir = 1; }
+
     var pg = S.page; setView(S.view); update(true); if (pg > 1 && S.view === 'gallery') { S.page = pg; renderGallery(); writeHash(); }
     S.cmp = S.cmp.filter(function (id) { return byId[id]; }); renderTray(); if (S.cmpOpen) renderCompare();
     if (S.id && byId[S.id]) select(S.id); else S.id = '';
