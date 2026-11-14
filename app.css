@@ -191,3 +191,12 @@
 @media (prefers-reduced-motion:no-preference){.cpc-halo{animation:cpcPulse 1.6s ease-out 3}}
 @keyframes cpcPulse{0%{transform:scale(.6);opacity:.4}50%{transform:scale(1.15);opacity:1}100%{transform:scale(1);opacity:1}}
 .cpc .leaflet-tooltip.cpc-label{font-size:12px;padding:3px 8px}
+/* v9: an element with the hidden attribute must stay hidden even when it has a display rule */
+.cpc [hidden]{display:none!important}
+/* strip under the map: breathing room and a scrollbar that stays visible */
+.cpc-strip{padding:4px 2px 16px;scroll-padding-left:2px}
+.cpc-strip::-webkit-scrollbar{height:12px;-webkit-appearance:none}
+.cpc-strip::-webkit-scrollbar-track{background:#E4E7EC;border-radius:6px}
+.cpc-strip::-webkit-scrollbar-thumb{background:#9AA1AC;border-radius:6px;border:2px solid #E4E7EC}
+.cpc-strip::-webkit-scrollbar-thumb:hover{background:#5A6270}
+@supports (-moz-appearance:none){.cpc-strip{scrollbar-width:auto;scrollbar-color:#9AA1AC #E4E7EC}}
