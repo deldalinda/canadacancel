@@ -274,10 +274,10 @@
   function pin(c, sel) { return L.divIcon({ html: '<div class="cpc-pin ' + st(c) + (sel ? ' sel' : '') + '"></div>', className: '', iconSize: [16, 16], iconAnchor: [8, 8] }); }
   function tip(m, dir) { if (!m.getTooltip()) m.bindTooltip(label(byId[m.options.cpcId]), { permanent: true, direction: dir, offset: dir === 'right' ? [10, 0] : [0, 0], className: 'cpc-label' }); }
   function initMap() {
-    map = L.map(el.map, { minZoom: 2, maxZoom: 16, zoomSnap: 0.25, worldCopyJump: true, scrollWheelZoom: false }).setView([58, -96], 3);
+    map = L.map(el.map, { minZoom: 2, maxZoom: 19, zoomSnap: 0.25, worldCopyJump: true, scrollWheelZoom: false }).setView([58, -96], 3);
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' }).addTo(map);
     map.on('click', function () { map.scrollWheelZoom.enable(); });
-    cluster = L.markerClusterGroup({ showCoverageOnHover: false, maxClusterRadius: 44, spiderfyOnMaxZoom: true,
+    cluster = L.markerClusterGroup({ showCoverageOnHover: false, maxClusterRadius: 44, spiderfyOnMaxZoom: true, spiderfyDistanceMultiplier: 3.2, spiderLegPolylineOptions: { weight: 1.5, color: '#1A1D23', opacity: 0.45 },
       iconCreateFunction: function (cl) {
         var ms = cl.getAllChildMarkers(), n = ms.length, e = ms.filter(function (m) { return m.options.cpcExp; }).length, d = Math.round(30 + Math.sqrt(n) * 4);
         return L.divIcon({ html: '<div class="cpc-cluster' + (e > n - e ? ' expired' : '') + '" style="width:' + d + 'px;height:' + d + 'px" title="' + (n - e) + ' active, ' + e + ' expired">' + n + '</div>', className: '', iconSize: [d, d] });
@@ -286,12 +286,20 @@
       var m = L.marker([c.lat, c.lng], { title: c.po + ' — ' + label(c), alt: c.po, icon: pin(c, false), keyboard: true, cpcExp: expired(c), cpcId: c.id });
       m.on('click', function () { select(c.id, true); }); markers[c.id] = m;
     });
-    cluster.on('spiderfied', function (e) { e.markers.forEach(function (m) { m._sp = true; tip(m, 'auto'); }); });
+    cluster.on('spiderfied', function (e) {
+      var o = map.latLngToLayerPoint(e.cluster.getLatLng());
+      e.markers.forEach(function (m) {
+        var p = map.latLngToLayerPoint(m.getLatLng()), dx = p.x - o.x, dy = p.y - o.y, dir;
+        if (Math.abs(dy) > Math.abs(dx) * 1.7) dir = dy < 0 ? 'top' : 'bottom'; else dir = dx < 0 ? 'left' : 'right';
+        m._sp = true; if (m.getTooltip()) m.unbindTooltip();
+        m.bindTooltip(label(byId[m.options.cpcId]), { permanent: true, direction: dir, offset: { right: [10, 0], left: [-10, 0], top: [0, -10], bottom: [0, 10] }[dir], className: 'cpc-label' });
+      });
+    });
     cluster.on('unspiderfied', function (e) { e.markers.forEach(function (m) { m._sp = false; m.unbindTooltip(); }); });
     cluster.on('animationend', labels);
     map.addLayer(cluster);
     map.on('moveend', debounce(function () { renderStrip(); labels(); }, 120));
-    leafletReady = true; renderMap(true);
+    leafletReady = true; renderMap(true); halo();
   }
   function labels() {
     if (!leafletReady) return;
@@ -319,7 +327,15 @@
     root.querySelectorAll('.cpc-card[aria-current]').forEach(function (n) { n.removeAttribute('aria-current'); });
     root.querySelectorAll('.cpc-card').forEach(function (n) { if (n._id === id) n.setAttribute('aria-current', 'true'); });
     if (S.view === 'gallery') renderGallery(); else renderStrip();
-    if (id && !fromMap && S.view === 'map' && leafletReady) showOnMap(id, true);
+    halo();
+  }
+  var haloM = null;
+  function halo() {
+    if (!leafletReady) return;
+    if (haloM) { map.removeLayer(haloM); haloM = null; }
+    var c = byId[S.id]; if (!c) return;
+    haloM = L.marker([c.lat, c.lng], { interactive: false, keyboard: false, zIndexOffset: 2000,
+      icon: L.divIcon({ html: '<div class="cpc-halo ' + st(c) + '"></div>', className: '', iconSize: [40, 40], iconAnchor: [20, 20] }) }).addTo(map);
   }
   function showOnMap(id, gentle) {
     var c = byId[id]; if (!c) return;
@@ -342,18 +358,25 @@
       (x.next || []).forEach(function (i) { if (byId[i] && pos[i] == null) { pos[i] = p + 1; q.push(i); } }); }
     return Object.keys(pos).map(function (i) { return byId[i]; }).sort(function (a, b) { return pos[a.id] - pos[b.id] || (a.s || 0) - (b.s || 0); });
   }
-  function coords(c) { return Math.abs(c.lat).toFixed(4) + '° ' + (c.lat >= 0 ? 'N' : 'S') + ', ' + Math.abs(c.lng).toFixed(4) + '° ' + (c.lng < 0 ? 'W' : 'E'); }
+  function coords(c) { return Math.abs(c.lat).toFixed(4) + '°' + (c.lat >= 0 ? 'N' : 'S') + ' ' + Math.abs(c.lng).toFixed(4) + '°' + (c.lng < 0 ? 'W' : 'E'); }
   function field(k, v, cls) { return v == null || v === '' ? null : h('div', { class: 'cpc-f ' + (cls || '') }, [h('span', { class: 'k', text: k }), h('span', { class: 'v' }, Array.isArray(v) ? v : [String(v)])]); }
   function renderDetail() {
     var c = byId[S.id], d = el.detail;
     el.body.classList.toggle('has-detail', !!c); d.hidden = !c; d.innerHTML = '';
-    if (!c) { if (map) setTimeout(function () { map.invalidateSize(); }, 0); return; }
+    if (!c) { if (map) setTimeout(function () { map.invalidateSize({ pan: false }); renderStrip(); }, 0); return; }
     d.className = 'cpc-detail ' + st(c);
     var span = Y1 - Y0, s = c.s || Y0, e = c.e || (c.open ? NOW : Y1), fuzzy = !c.s || (!c.e && !c.open);
     var kids = [
       h('button', { class: 'x', type: 'button', 'aria-label': 'Close', text: '×', onclick: function () { select(''); } }),
       h('button', { class: 'big', type: 'button', 'aria-label': 'Enlarge image', onclick: function () { lightbox(c); } }, [h('img', { src: full(c), alt: c.design || c.po, width: 600, height: 600 })]),
-      h('div', {}, [h('h2', { text: c.po }), c.nick ? h('div', { class: 'nick', text: '“' + cap(c.nick) + '”' }) : null]),
+      h('div', { class: 'cpc-head' }, [
+        h('div', { class: 'l' }, [h('h2', { text: c.po }), c.nick ? h('div', { class: 'nick', text: '“' + cap(c.nick) + '”' }) : null]),
+        h('div', { class: 'r' }, [h('div', { class: 'cpc-addr', text: c.addr || [c.city, c.prov].join(', ') }), me ? h('div', { class: 'dist', text: Math.round(dist(me, c)) + ' km from you' }) : null])
+      ]),
+      h('div', { class: 'cpc-actions' }, [
+        h('button', { class: 'cpc-btn go ' + st(c), type: 'button', text: 'Show on map', onclick: function () { showOnMap(c.id); } }),
+        h('a', { class: 'cpc-btn', href: 'https://www.google.com/maps/search/?api=1&query=' + c.lat + ',' + c.lng, target: '_blank', rel: 'noopener', text: 'Directions' })
+      ]),
       h('div', { class: 'cpc-run' }, [
         h('div', { class: 'lab' }, [h('span', { class: 'k', text: 'Run dates' }), h('span', { class: 'v', text: c.run || 'Unknown' })]),
         h('div', { class: 'tr' }, [
@@ -366,7 +389,7 @@
         field('Status', [h('span', { class: 'dot ' + st(c) }), stName(c)], 'st-' + st(c)),
         field('Colour', c.ink ? [h('span', { class: 'swatch', style: 'background:' + (INK[c.ink] || '#888') }), c.ink] : '—'),
         field('Designer', c.designer || 'Unknown'),
-        field('Coordinates', coords(c)),
+        field('Coordinates', coords(c), 'nowrap'),
         field('Design', c.design || '—', 'wide'),
         c.tags ? h('div', { class: 'cpc-f wide' }, [h('span', { class: 'k', text: 'Tags' }), h('span', { class: 'cpc-chips' }, c.tags.map(function (t) {
           return h('button', { class: 'cpc-chip', type: 'button', text: t, onclick: function () { S.tag = t.toLowerCase(); S.id = ''; renderDetail(); go(true); } }); }))]) : null
@@ -380,18 +403,11 @@
     var linked = chain.map(function (o) { return o.id; });
     var same = D.filter(function (o) { return o.id !== c.id && linked.indexOf(o.id) < 0 && Math.abs(o.lat - c.lat) < 1e-4 && Math.abs(o.lng - c.lng) < 1e-4; });
     if (same.length) kids.push(h('div', { class: 'cpc-sec' }, [h('h3', { class: 'cpc-h', text: 'Also at this post office' })].concat(same.map(function (o) { return rel(o, o.po); }))));
-    kids.push(h('div', { class: 'cpc-sec' }, [
-      h('div', { class: 'cpc-fields' }, [field('Address', c.addr || [c.city, c.prov].join(', '), 'wide'), me ? field('Distance', Math.round(dist(me, c)) + ' km from you', 'wide') : null]),
-      h('div', { class: 'cpc-actions' }, [
-        h('button', { class: 'cpc-btn primary', type: 'button', text: 'Show on map', onclick: function () { showOnMap(c.id); } }),
-        h('a', { class: 'cpc-btn', href: 'https://www.google.com/maps/search/?api=1&query=' + c.lat + ',' + c.lng, target: '_blank', rel: 'noopener', text: 'Directions' }),
-        h('button', { class: 'cpc-btn', type: 'button', text: 'Copy link', onclick: function () {
-          var u = location.href; if (navigator.clipboard) navigator.clipboard.writeText(u).then(function () { toast('Link copied'); }); else prompt('Copy this link', u); } })
-      ])
-    ]));
+    kids.push(h('div', { class: 'cpc-sec' }, [h('button', { class: 'cpc-btn', type: 'button', text: 'Copy link to this cancel', onclick: function () {
+      var u = location.href; if (navigator.clipboard) navigator.clipboard.writeText(u).then(function () { toast('Link copied'); }); else prompt('Copy this link', u); } })]));
     kids.forEach(function (k) { if (k) d.appendChild(k); });
     d.scrollTop = 0;
-    if (map) setTimeout(function () { map.invalidateSize(); }, 0);
+    if (map) setTimeout(function () { map.invalidateSize({ pan: false }); renderStrip(); }, 0);
   }
   function lightbox(c) {
     var box = h('div', { class: 'cpc cpc-lightbox', role: 'dialog', 'aria-label': 'Enlarged image' }, [h('img', { src: full(c), alt: c.design || c.po }), h('button', { type: 'button', 'aria-label': 'Close', text: '×' })]);

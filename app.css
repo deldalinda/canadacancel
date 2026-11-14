@@ -174,3 +174,20 @@
 .cpc-f .cpc-chip{background:#fff}
 .cpc-rel.cur{background:var(--ground);cursor:default}
 .cpc-bar select.cpc-btn{padding-right:10px}
+/* v7 */
+.cpc-body.has-detail{grid-template-columns:var(--side) minmax(0,1fr) minmax(360px,420px)}
+.cpc-f.nowrap .v{white-space:nowrap}
+.cpc-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;padding-right:0}
+.cpc-head .l{min-width:0;flex:1 1 auto}
+.cpc-head .r{flex:0 1 46%;text-align:right;font-size:13px;line-height:1.35;color:var(--muted)}
+.cpc-head .cpc-addr{white-space:pre-line}
+.cpc-head .dist{margin-top:4px;color:var(--ink);font-weight:500}
+.cpc-btn.go{font-weight:600;justify-content:center;border-width:0}
+.cpc-btn.go.active{background:var(--act);color:#0B3D12}.cpc-btn.go.active:hover{background:#1AAE2B}
+.cpc-btn.go.expired{background:var(--exp);color:#fff}.cpc-btn.go.expired:hover{background:#BE123C}
+.cpc-detail .cpc-sec>.cpc-btn{justify-content:center}
+.cpc-halo{width:40px;height:40px;border-radius:50%;border:3px solid var(--ink);box-shadow:0 0 0 3px #fff;background:rgba(32,201,51,.18)}
+.cpc-halo.expired{background:rgba(225,29,72,.18)}
+@media (prefers-reduced-motion:no-preference){.cpc-halo{animation:cpcPulse 1.6s ease-out 3}}
+@keyframes cpcPulse{0%{transform:scale(.6);opacity:.4}50%{transform:scale(1.15);opacity:1}100%{transform:scale(1);opacity:1}}
+.cpc .leaflet-tooltip.cpc-label{font-size:12px;padding:3px 8px}
