@@ -359,16 +359,61 @@
   }
   function pin(c, sel) { return L.divIcon({ html: '<div class="cpc-pin ' + st(c) + (sel ? ' sel' : '') + '"></div>', className: '', iconSize: [16, 16], iconAnchor: [8, 8] }); }
   function tip(m, dir) { if (!m.getTooltip()) m.bindTooltip(label(byId[m.options.cpcId]), { permanent: true, direction: dir, offset: dir === 'right' ? [10, 0] : [0, 0], className: 'cpc-label' }); }
+  /* fan-out: the smallest regular polygon whose dots and nickname labels do not overlap */
+  var measureCtx = null;
+  function textW(t) {
+    if (!measureCtx) measureCtx = document.createElement('canvas').getContext('2d');
+    measureCtx.font = '500 12px "Space Grotesk", system-ui, sans-serif';
+    return Math.ceil(measureCtx.measureText(t).width) + 18;
+  }
+  var RATIO = 1.7;
+  function labelDir(dx, dy, k) { return Math.abs(dy) > Math.abs(dx) * (k || RATIO) ? (dy < 0 ? 'top' : 'bottom') : (dx < 0 ? 'left' : 'right'); }
+  var LBL_H = 22, DOT = 10, GAP = 3, OFF = { right: [10, 0], left: [-10, 0], top: [0, -10], bottom: [0, 10] };
+  function boxes(r, ws, k) {
+    var n = ws.length, out = [];
+    for (var i = 0; i < n; i++) {
+      var a = -Math.PI / 2 + i * 2 * Math.PI / n, x = r * Math.cos(a), y = r * Math.sin(a), d = labelDir(x, y, k), w = ws[i], b;
+      out.push([x - DOT, y - DOT, x + DOT, y + DOT]);
+      if (d === 'right') b = [x + 10, y - LBL_H / 2, x + 10 + w, y + LBL_H / 2];
+      else if (d === 'left') b = [x - 10 - w, y - LBL_H / 2, x - 10, y + LBL_H / 2];
+      else if (d === 'top') b = [x - w / 2, y - 10 - LBL_H, x + w / 2, y - 10];
+      else b = [x - w / 2, y + 10, x + w / 2, y + 10 + LBL_H];
+      out.push(b);
+    }
+    return out;
+  }
+  function clashes(bx) {
+    for (var i = 0; i < bx.length; i++) for (var j = i + 1; j < bx.length; j++) {
+      if ((i >> 1) === (j >> 1)) continue; // a dot and its own label
+      var p = bx[i], q = bx[j];
+      if (p[0] < q[2] + GAP && q[0] < p[2] + GAP && p[1] < q[3] + GAP && q[1] < p[3] + GAP) return true;
+    }
+    return false;
+  }
+  function fanOut(n, c) {
+    var kids = (cluster && cluster._cpcKids) || [], ws = [];
+    for (var i = 0; i < n; i++) { var m = kids[i], cc = m && byId[m.options.cpcId]; ws.push(cc ? textW(label(cc)) : 80); }
+    var r0 = Math.max(30, n > 1 ? (DOT + GAP / 2) / Math.sin(Math.PI / n) : 30), best = null;
+    // try a few rules for which dots get labels above/below versus beside them; keep whichever packs tightest
+    [0.45, 0.7, 1, 1.4, 1.7, 2.4, 3.5, 1e6].forEach(function (k) {
+      var r = r0; while (r < 900 && clashes(boxes(r, ws, k))) r += 2;
+      if (!best || r < best.r) best = { r: r, k: k };
+    });
+    var r = best.r; if (cluster) cluster._cpcRatio = best.k;
+    var out = [];
+    for (i = 0; i < n; i++) { var a = -Math.PI / 2 + i * 2 * Math.PI / n; out.push(L.point(c.x + r * Math.cos(a), c.y + r * Math.sin(a))); }
+    return out;
+  }
   function initMap() {
+    if (!L.MarkerCluster.prototype._cpcPatched) {
+      var orig = L.MarkerCluster.prototype.spiderfy;
+      L.MarkerCluster.prototype.spiderfy = function () { this._group._cpcKids = this.getAllChildMarkers(null, true); return orig.apply(this, arguments); };
+      L.MarkerCluster.prototype._cpcPatched = true;
+    }
     map = L.map(el.map, { minZoom: 2, maxZoom: 19, zoomSnap: 0.25, worldCopyJump: true, scrollWheelZoom: false }).setView([58, -96], 3);
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' }).addTo(map);
     map.on('click', function () { map.scrollWheelZoom.enable(); });
-    cluster = L.markerClusterGroup({ showCoverageOnHover: false, maxClusterRadius: 44, spiderfyOnMaxZoom: true, spiderfyShapePositions: function (n, c) {
-        // a regular polygon: every dot the same distance from the centre and from its neighbours
-        var r = Math.max(60, (3.2 * 25 * (n + 2)) / (2 * Math.PI)), out = [];
-        for (var i = 0; i < n; i++) { var a = -Math.PI / 2 + i * 2 * Math.PI / n; out.push(L.point(c.x + r * Math.cos(a), c.y + r * Math.sin(a))); }
-        return out;
-      }, spiderLegPolylineOptions: { weight: 1.5, color: '#1A1D23', opacity: 0.45 },
+    cluster = L.markerClusterGroup({ showCoverageOnHover: false, maxClusterRadius: 44, spiderfyOnMaxZoom: true, spiderfyShapePositions: function (n, c) { return fanOut(n, c); }, spiderLegPolylineOptions: { weight: 1.5, color: '#1A1D23', opacity: 0.45 },
       iconCreateFunction: function (cl) {
         var ms = cl.getAllChildMarkers(), n = ms.length, e = ms.filter(function (m) { return m.options.cpcExp; }).length, d = Math.round(30 + Math.sqrt(n) * 4);
         return L.divIcon({ html: '<div class="cpc-cluster' + (e > n - e ? ' expired' : '') + '" style="width:' + d + 'px;height:' + d + 'px" title="' + (n - e) + ' active, ' + e + ' expired">' + n + '</div>', className: '', iconSize: [d, d] });
@@ -380,10 +425,9 @@
     cluster.on('spiderfied', function (e) {
       var o = map.latLngToLayerPoint(e.cluster.getLatLng());
       e.markers.forEach(function (m) {
-        var p = map.latLngToLayerPoint(m.getLatLng()), dx = p.x - o.x, dy = p.y - o.y, dir;
-        if (Math.abs(dy) > Math.abs(dx) * 1.7) dir = dy < 0 ? 'top' : 'bottom'; else dir = dx < 0 ? 'left' : 'right';
+        var p = map.latLngToLayerPoint(m.getLatLng()), dir = labelDir(p.x - o.x, p.y - o.y, cluster._cpcRatio);
         m._sp = true; if (m.getTooltip()) m.unbindTooltip();
-        m.bindTooltip(label(byId[m.options.cpcId]), { permanent: true, direction: dir, offset: { right: [10, 0], left: [-10, 0], top: [0, -10], bottom: [0, 10] }[dir], className: 'cpc-label' });
+        m.bindTooltip(label(byId[m.options.cpcId]), { permanent: true, direction: dir, offset: OFF[dir], className: 'cpc-label' });
       });
     });
     cluster.on('unspiderfied', function (e) { e.markers.forEach(function (m) { m._sp = false; m.unbindTooltip(); }); });

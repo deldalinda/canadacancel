@@ -273,3 +273,7 @@
 .cpc .cpc-detail .cpc-head h2{font-weight:600;letter-spacing:0}
 .cpc .cpc-detail .cpc-actions{gap:6px}
 .cpc .cpc-detail .cpc-actions .cpc-btn{flex:1 1 0;min-width:0;font-size:13px;line-height:1.1;padding:4px 8px;text-align:center;white-space:normal;height:auto;min-height:40px}
+/* v18: cancel panel type — serif for the post office name and field values; sans for nickname, address, field titles and buttons */
+.cpc .cpc-detail .cpc-head .nick,.cpc .cpc-detail .cpc-actions .cpc-btn,.cpc .cpc-detail .cpc-sec>.cpc-btn{font-family:"Space Grotesk",system-ui,-apple-system,"Segoe UI",sans-serif!important}
+.cpc .cpc-detail .cpc-head h2,.cpc .cpc-detail .cpc-fields .cpc-f .v,.cpc .cpc-detail .cpc-fields .cpc-f .v *,.cpc .cpc-detail .cpc-run .lab .v,.cpc .cpc-detail .cpc-fields .cpc-f .cpc-chip{font-family:Literata,Georgia,"Times New Roman",serif!important}
+.cpc .cpc-detail .cpc-actions .cpc-btn{font-size:13px}
