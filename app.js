@@ -244,7 +244,7 @@
     var on = S.cmp.indexOf(c.id) > -1;
     return h('button', { class: small ? 'cpc-cmp' : 'cpc-btn cpc-cmpbig', type: 'button', 'data-cmp': c.id, 'aria-pressed': on ? 'true' : 'false',
       'aria-label': (on ? 'Remove ' : 'Add ') + c.po + ' ' + label(c) + (on ? ' from comparison' : ' to comparison'), title: on ? 'Remove from comparison' : 'Add to comparison',
-      onclick: function (e) { e.stopPropagation(); toggleCmp(c.id); } }, small ? [h('span', { 'aria-hidden': 'true', text: on ? '✓' : '+' }), h('span', { class: 't', text: 'Compare' })] : [on ? '✓ In comparison' : '+ Compare']);
+      onclick: function (e) { e.stopPropagation(); toggleCmp(c.id); } }, small ? [h('span', { 'aria-hidden': 'true', text: on ? '✓' : '+' }), h('span', { class: 't', text: 'Compare' })] : [on ? 'In comparison' : 'Compare']);
   }
   function toggleCmp(id) {
     var i = S.cmp.indexOf(id);
