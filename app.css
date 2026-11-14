@@ -277,3 +277,5 @@
 .cpc .cpc-detail .cpc-head .nick,.cpc .cpc-detail .cpc-actions .cpc-btn,.cpc .cpc-detail .cpc-sec>.cpc-btn{font-family:"Space Grotesk",system-ui,-apple-system,"Segoe UI",sans-serif!important}
 .cpc .cpc-detail .cpc-head h2,.cpc .cpc-detail .cpc-fields .cpc-f .v,.cpc .cpc-detail .cpc-fields .cpc-f .v *,.cpc .cpc-detail .cpc-run .lab .v,.cpc .cpc-detail .cpc-fields .cpc-f .cpc-chip{font-family:Literata,Georgia,"Times New Roman",serif!important}
 .cpc .cpc-detail .cpc-actions .cpc-btn{font-size:13px}
+/* v20: field values use the exact serif face the buttons had (Literata 500), not a lighter or theme-supplied Literata */
+.cpc .cpc-detail .cpc-fields .cpc-f .v,.cpc .cpc-detail .cpc-fields .cpc-f .v *,.cpc .cpc-detail .cpc-run .lab .v,.cpc .cpc-detail .cpc-fields .cpc-f .cpc-chip{font-family:"Literata",Georgia,serif!important;font-weight:500!important;font-optical-sizing:auto}
