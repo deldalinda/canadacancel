@@ -163,3 +163,14 @@
   .cpc-zoom{margin-left:0}
 }
 .cpc-detail>*{flex-shrink:0}
+/* v6: one font everywhere, whatever the host theme sets */
+.cpc,.cpc *:not(.leaflet-control-attribution):not(.leaflet-control-attribution *){font-family:"Space Grotesk",system-ui,-apple-system,"Segoe UI",sans-serif!important}
+.cpc-detail .nick{margin-top:2px;font-size:16px;color:var(--muted)}
+.cpc-run{padding:0;gap:8px}
+.cpc-run .lab{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px;padding:8px 10px;border-radius:8px;background:var(--ground)}
+.cpc-run .lab .k{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.cpc-run .lab .v{margin-left:auto;font-size:14px;color:var(--ink)}
+.cpc-f .cpc-chips{margin-top:4px}
+.cpc-f .cpc-chip{background:#fff}
+.cpc-rel.cur{background:var(--ground);cursor:default}
+.cpc-bar select.cpc-btn{padding-right:10px}

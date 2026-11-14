@@ -141,7 +141,9 @@
       h('div', { class: 'cpc-year' }, [h('label', {}, [el.yOn, 'In use between']), el.yOut, el.yDual]),
       el.sort,
       h('button', { class: 'cpc-btn', type: 'button', text: 'Near me', onclick: locate }),
-      h('button', { class: 'cpc-btn', type: 'button', text: 'Download list', title: 'Download the cancels shown as a CSV file', onclick: csv })
+      el.dl = h('select', { class: 'cpc-btn', 'aria-label': 'Download the cancels shown', onchange: function () { var v = el.dl.value; el.dl.value = ''; if (v === 'csv') csv(); else if (v) zip(v); } }, [
+        h('option', { value: '', text: 'Download…' }), h('option', { value: 'csv', text: 'List only (CSV)' }),
+        h('option', { value: 'thumb', text: 'List + small images (ZIP)' }), h('option', { value: 'full', text: 'List + full images (ZIP)' })])
     ]);
     el.fbody = h('div', { style: 'display:contents' });
     el.grip = h('button', { class: 'cpc-grip', type: 'button', 'aria-label': 'Drag to resize the filter panel', title: 'Drag to resize' });
@@ -293,11 +295,7 @@
   }
   function labels() {
     if (!leafletReady) return;
-    var b = map.getBounds(), free = [];
-    filtered.forEach(function (c) { var m = markers[c.id]; if (m._sp) return;
-      if (cluster.getVisibleParent(m) === m && b.contains(m.getLatLng())) free.push(m); else if (m.getTooltip()) m.unbindTooltip(); });
-    var show = free.length <= 40;
-    free.forEach(function (m) { if (show) tip(m, 'right'); else if (m.getTooltip()) m.unbindTooltip(); });
+    D.forEach(function (c) { var m = markers[c.id]; if (!m._sp && m.getTooltip()) m.unbindTooltip(); });
   }
   function renderMap(fit) {
     if (!leafletReady) return;
@@ -337,6 +335,14 @@
       h('span', {}, [label(c), h('small', { text: lab + ' · ' + stName(c) + ' · ' + runShort(c) })])
     ]);
   }
+  function versions(c) {
+    var pos = {}, q = [c.id]; pos[c.id] = 0;
+    while (q.length) { var x = byId[q.shift()], p = pos[x.id];
+      (x.prev || []).forEach(function (i) { if (byId[i] && pos[i] == null) { pos[i] = p - 1; q.push(i); } });
+      (x.next || []).forEach(function (i) { if (byId[i] && pos[i] == null) { pos[i] = p + 1; q.push(i); } }); }
+    return Object.keys(pos).map(function (i) { return byId[i]; }).sort(function (a, b) { return pos[a.id] - pos[b.id] || (a.s || 0) - (b.s || 0); });
+  }
+  function coords(c) { return Math.abs(c.lat).toFixed(4) + '° ' + (c.lat >= 0 ? 'N' : 'S') + ', ' + Math.abs(c.lng).toFixed(4) + '° ' + (c.lng < 0 ? 'W' : 'E'); }
   function field(k, v, cls) { return v == null || v === '' ? null : h('div', { class: 'cpc-f ' + (cls || '') }, [h('span', { class: 'k', text: k }), h('span', { class: 'v' }, Array.isArray(v) ? v : [String(v)])]); }
   function renderDetail() {
     var c = byId[S.id], d = el.detail;
@@ -347,31 +353,31 @@
     var kids = [
       h('button', { class: 'x', type: 'button', 'aria-label': 'Close', text: '×', onclick: function () { select(''); } }),
       h('button', { class: 'big', type: 'button', 'aria-label': 'Enlarge image', onclick: function () { lightbox(c); } }, [h('img', { src: full(c), alt: c.design || c.po, width: 600, height: 600 })]),
-      h('div', {}, [h('h2', { text: c.po }), h('div', { class: 'sub', text: [c.city, c.prov].filter(Boolean).join(', ') })]),
-      h('div', { class: 'cpc-fields' }, [
-        field('Status', [h('span', { class: 'dot ' + st(c) }), stName(c)], 'st-' + st(c)),
-        field('Ink', c.ink ? [h('span', { class: 'swatch', style: 'background:' + (INK[c.ink] || '#888') }), c.ink] : null),
-        field('Design', c.design, 'wide'),
-        field('Nickname', c.nick),
-        field('Designer', c.designer && c.designer !== 'Unknown' ? c.designer : null),
-        field('Size', c.w && c.h ? String(c.w).replace(/mm/, '') + ' × ' + String(c.h).replace(/mm/, '') + ' mm' : null),
-        field('Added', c.added)
-      ]),
+      h('div', {}, [h('h2', { text: c.po }), c.nick ? h('div', { class: 'nick', text: '“' + cap(c.nick) + '”' }) : null]),
       h('div', { class: 'cpc-run' }, [
-        h('div', { class: 'lab' }, [h('span', { text: 'Run dates' }), h('span', { class: 'mono', text: c.run || 'Unknown' })]),
+        h('div', { class: 'lab' }, [h('span', { class: 'k', text: 'Run dates' }), h('span', { class: 'v', text: c.run || 'Unknown' })]),
         h('div', { class: 'tr' }, [
           h('i', { class: st(c) + (fuzzy ? ' fuzzy' : ''), style: 'left:' + ((s - Y0) / span * 100) + '%;width:' + Math.max(2, (e - s) / span * 100) + '%' }),
           h('b', { style: 'left:' + ((NOW - Y0) / span * 100) + '%', title: 'Today' })
         ]),
-        h('div', { class: 'ax mono' }, [h('span', { text: String(Y0) }), h('span', { text: fuzzy ? 'striped = date unknown' : 'line = today' }), h('span', { text: String(Y1) })])
+        h('div', { class: 'ax' }, [h('span', { text: String(Y0) }), h('span', { text: fuzzy ? 'striped = date unknown' : 'line = today' }), h('span', { text: String(Y1) })])
       ]),
-      c.tags ? h('div', { class: 'cpc-chips' }, c.tags.map(function (t) {
-        return h('button', { class: 'cpc-chip', type: 'button', text: t, onclick: function () { S.tag = t.toLowerCase(); S.id = ''; renderDetail(); go(true); } }); })) : null
+      h('div', { class: 'cpc-fields' }, [
+        field('Status', [h('span', { class: 'dot ' + st(c) }), stName(c)], 'st-' + st(c)),
+        field('Colour', c.ink ? [h('span', { class: 'swatch', style: 'background:' + (INK[c.ink] || '#888') }), c.ink] : '—'),
+        field('Designer', c.designer || 'Unknown'),
+        field('Coordinates', coords(c)),
+        field('Design', c.design || '—', 'wide'),
+        c.tags ? h('div', { class: 'cpc-f wide' }, [h('span', { class: 'k', text: 'Tags' }), h('span', { class: 'cpc-chips' }, c.tags.map(function (t) {
+          return h('button', { class: 'cpc-chip', type: 'button', text: t, onclick: function () { S.tag = t.toLowerCase(); S.id = ''; renderDetail(); go(true); } }); }))]) : null
+      ])
     ];
-    var ver = (c.prev || []).map(function (i) { return byId[i] && rel(byId[i], 'Earlier version'); })
-      .concat((c.next || []).map(function (i) { return byId[i] && rel(byId[i], 'Later version'); })).filter(Boolean);
+    var chain = versions(c), ver = chain.length > 1 ? chain.map(function (o, i) {
+      var lab = 'Version ' + (i + 1) + ' of ' + chain.length;
+      return o.id === c.id ? h('div', { class: 'cpc-rel cur' }, [h('img', { src: thumb(o), alt: '', width: 48, height: 48 }), h('span', {}, [label(o), h('small', { text: lab + ' · this one' })])]) : rel(o, lab);
+    }) : [];
     if (ver.length) kids.push(h('div', { class: 'cpc-sec' }, [h('h3', { class: 'cpc-h', text: 'Versions of this cancel' })].concat(ver)));
-    var linked = (c.prev || []).concat(c.next || []);
+    var linked = chain.map(function (o) { return o.id; });
     var same = D.filter(function (o) { return o.id !== c.id && linked.indexOf(o.id) < 0 && Math.abs(o.lat - c.lat) < 1e-4 && Math.abs(o.lng - c.lng) < 1e-4; });
     if (same.length) kids.push(h('div', { class: 'cpc-sec' }, [h('h3', { class: 'cpc-h', text: 'Also at this post office' })].concat(same.map(function (o) { return rel(o, o.po); }))));
     kids.push(h('div', { class: 'cpc-sec' }, [
@@ -411,12 +417,38 @@
       toast('Sorted by distance from you');
     }, function () { toast('Could not get your location'); }, { timeout: 8000 });
   }
-  function csv() {
-    var cols = [['Post Office', 'po'], ['City', 'city'], ['Province', 'prov'], ['Status', 'status'], ['Ink', 'ink'], ['Run Dates', 'run'], ['Design', 'design'], ['Nickname', 'nick'], ['Tags', 'tags'], ['Latitude', 'lat'], ['Longitude', 'lng'], ['Address', 'addr']];
+  function fname(c) { return (c.prov + '/' + c.po + (c.nick ? ' - ' + c.nick : '') + ' - ' + c.id.slice(-5)).replace(/[\\:*?"<>|]+/g, '').replace(/\s+/g, ' ') + '.jpg'; }
+  function table(withFile) {
+    var cols = [['Post Office', 'po'], ['City', 'city'], ['Province', 'prov'], ['Status', 'status'], ['Colour', 'ink'], ['Run Dates', 'run'], ['Design', 'design'], ['Nickname', 'nick'], ['Designer', 'designer'], ['Tags', 'tags'], ['Latitude', 'lat'], ['Longitude', 'lng'], ['Address', 'addr']];
     var q = function (v) { v = v == null ? '' : Array.isArray(v) ? v.join(', ') : String(v); return '"' + v.replace(/"/g, '""').replace(/\n/g, ', ') + '"'; };
-    var rows = [cols.map(function (c) { return q(c[0]); }).join(',')].concat(filtered.map(function (r) { return cols.map(function (c) { return q(c[1] === 'status' ? stName(r) : r[c[1]]); }).join(','); }));
-    var a = h('a', { href: URL.createObjectURL(new Blob(['﻿' + rows.join('\r\n')], { type: 'text/csv' })), download: 'pictorial-cancels.csv' });
-    document.body.appendChild(a); a.click(); a.remove();
+    var head = cols.map(function (c) { return q(c[0]); }).concat([q(withFile ? 'Image file' : 'Image link')]).join(',');
+    return '\ufeff' + [head].concat(filtered.map(function (r) {
+      return cols.map(function (c) { return q(c[1] === 'status' ? stName(r) : r[c[1]]); }).concat([q(withFile ? 'images/' + fname(r) : full(r))]).join(',');
+    })).join('\r\n');
+  }
+  function save(blob, name) { var a = h('a', { href: URL.createObjectURL(blob), download: name }); document.body.appendChild(a); a.click(); a.remove(); }
+  function csv() { save(new Blob([table(false)], { type: 'text/csv' }), 'pictorial-cancels.csv'); }
+  function zip(kind) {
+    var n = filtered.length, mb = Math.round(n * (kind === 'full' ? 0.14 : 0.024));
+    if (!n) return toast('No cancels to download');
+    if (n > 60 && !confirm('Download ' + n + ' cancels with ' + (kind === 'full' ? 'full-size' : 'small') + ' images? About ' + Math.max(1, mb) + ' MB.')) return;
+    function go2() {
+      var z = new JSZip(), list = filtered.slice(), done = 0, i = 0, run = 0, failed = 0;
+      z.file('pictorial-cancels.csv', table(true));
+      toast('Preparing ' + n + ' images…');
+      return new Promise(function (res) {
+        function next() {
+          while (run < 6 && i < list.length) { (function (c) { run++; i++;
+            fetch(kind === 'full' ? full(c) : thumb(c)).then(function (r) { if (!r.ok) throw 0; return r.blob(); })
+              .then(function (b) { z.file('images/' + fname(c), b, { binary: true }); }, function () { failed++; })
+              .then(function () { run--; done++; el.count.textContent = 'Preparing images ' + done + ' / ' + n + '…'; if (done === n) res(); else next(); });
+          })(list[i]); }
+        }
+        next();
+      }).then(function () { return z.generateAsync({ type: 'blob', compression: 'STORE' }); })
+        .then(function (b) { save(b, 'pictorial-cancels' + (kind === 'full' ? '' : '-small') + '.zip'); update(); if (failed) toast(failed + ' images could not be included'); });
+    }
+    if (window.JSZip) go2(); else { var sc = h('script', { src: 'https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js' }); sc.onload = go2; sc.onerror = function () { toast('Could not load the ZIP tool'); }; document.head.appendChild(sc); }
   }
 
   /* ---------- update cycle ---------- */
