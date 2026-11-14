@@ -649,7 +649,7 @@
         if (meM) map.removeLayer(meM);
         meM = L.marker([me.lat, me.lng], { interactive: false, keyboard: false, zIndexOffset: 3000,
           icon: L.divIcon({ html: '<div class="cpc-me"></div>', className: '', iconSize: [22, 22], iconAnchor: [11, 11] }) }).addTo(map);
-        map.setView([me.lat, me.lng], 10);
+        map.setView([me.lat, me.lng], 7);
       }
     }, function () { if (el.nearB) el.nearB.classList.remove('busy'); toast('Could not get your location'); }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 });
   }
