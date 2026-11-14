@@ -363,7 +363,7 @@
   var measureCtx = null;
   function textW(t) {
     if (!measureCtx) measureCtx = document.createElement('canvas').getContext('2d');
-    measureCtx.font = '500 12px "Space Grotesk", system-ui, sans-serif';
+    measureCtx.font = '500 12px "Inter Tight", system-ui, sans-serif';
     return Math.ceil(measureCtx.measureText(t).width) + 18;
   }
   var RATIO = 1.7;
