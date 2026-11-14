@@ -162,7 +162,6 @@
       h('label', { class: 'cpc-search' }, [svg('M11 4a7 7 0 100 14 7 7 0 000-14zM20 20l-3.5-3.5'), el.search]),
       h('div', { class: 'cpc-year' }, [el.count, h('label', {}, [el.yOn, 'in use between']), el.yOut, el.yDual]),
       el.sortBox,
-      h('button', { class: 'cpc-btn', type: 'button', text: 'Near me', onclick: locate }),
       el.dl = h('select', { class: 'cpc-btn', 'aria-label': 'Download the cancels shown', onchange: function () { var v = el.dl.value; el.dl.value = ''; if (v === 'csv') csv(); else if (v) zip(v); } }, [
         h('option', { value: '', text: 'Download…' }), h('option', { value: 'csv', text: 'List only (CSV)' }),
         h('option', { value: 'thumb', text: 'List + small images (ZIP)' }), h('option', { value: 'full', text: 'List + full images (ZIP)' })])
@@ -483,6 +482,13 @@
     map = L.map(el.map, { minZoom: 2, maxZoom: 19, zoomSnap: 0.25, worldCopyJump: true, scrollWheelZoom: false }).setView([58, -96], 3);
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' }).addTo(map);
     map.on('click', function () { map.scrollWheelZoom.enable(); });
+    var Near = L.Control.extend({ options: { position: 'topright' }, onAdd: function () {
+      var b = L.DomUtil.create('button', 'cpc-near');
+      b.type = 'button'; b.title = 'Jump to where you are'; b.setAttribute('aria-label', 'Near me: jump the map to where you are');
+      b.innerHTML = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l18-8-8 18-2-8z"/></svg><span>Near me</span>';
+      L.DomEvent.disableClickPropagation(b); L.DomEvent.on(b, 'click', function (e) { L.DomEvent.preventDefault(e); locate(); });
+      el.nearB = b; return b; } });
+    map.addControl(new Near());
     cluster = L.markerClusterGroup({ showCoverageOnHover: false, maxClusterRadius: 44, spiderfyOnMaxZoom: true, spiderfyShapePositions: function (n, c) { return fanOut(n, c); }, spiderLegPolylineOptions: { weight: 1.5, color: '#1A1D23', opacity: 0.45 },
       iconCreateFunction: function (cl) {
         var ms = cl.getAllChildMarkers(), n = ms.length, e = ms.filter(function (m) { return m.options.cpcExp; }).length, d = Math.round(30 + Math.sqrt(n) * 4);
@@ -632,13 +638,20 @@
     else renderGallery();
     writeHash();
   }
+  var meM = null;
   function locate() {
     if (!navigator.geolocation) return toast('Location is not available in this browser');
+    if (el.nearB) el.nearB.classList.add('busy');
     navigator.geolocation.getCurrentPosition(function (p) {
+      if (el.nearB) el.nearB.classList.remove('busy');
       me = { lat: p.coords.latitude, lng: p.coords.longitude }; renderDetail();
-      if (leafletReady && S.view === 'map') map.setView([me.lat, me.lng], 8);
-      toast('Showing the map around you');
-    }, function () { toast('Could not get your location'); }, { timeout: 8000 });
+      if (leafletReady) {
+        if (meM) map.removeLayer(meM);
+        meM = L.marker([me.lat, me.lng], { interactive: false, keyboard: false, zIndexOffset: 3000,
+          icon: L.divIcon({ html: '<div class="cpc-me"></div>', className: '', iconSize: [22, 22], iconAnchor: [11, 11] }) }).addTo(map);
+        map.setView([me.lat, me.lng], 10);
+      }
+    }, function () { if (el.nearB) el.nearB.classList.remove('busy'); toast('Could not get your location'); }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 });
   }
   function fname(c) { return (c.prov + '/' + c.po + (c.nick ? ' - ' + c.nick : '') + ' - ' + c.id.slice(-5)).replace(/[\\:*?"<>|]+/g, '').replace(/\s+/g, ' ') + '.jpg'; }
   function table(withFile) {

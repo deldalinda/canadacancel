@@ -355,3 +355,9 @@
 .cpc-tlr{min-height:66px}.cpc-tlr .tk{height:66px}.cpc-tlr .tk i{top:30px}
 .cpc-bar .cpc-search{flex:0 1 280px}
 .cpc-year{flex:1 1 300px}
+/* v27: Near me inside the map */
+.cpc .cpc-near{display:inline-flex;align-items:center;gap:7px;height:38px;padding:0 14px;border:0;border-radius:19px;background:#fff;color:var(--ink);font-size:14px;font-weight:600;box-shadow:0 1px 5px rgba(26,29,35,.3);cursor:pointer}
+.cpc .cpc-near svg{color:var(--red)}
+.cpc .cpc-near:hover{background:var(--ground)}
+.cpc .cpc-near.busy{opacity:.6;cursor:progress}
+.cpc-me{width:22px;height:22px;border-radius:50%;background:#1F6FEB;border:4px solid #fff;box-shadow:0 0 0 6px rgba(31,111,235,.25),0 1px 4px rgba(0,0,0,.4)}
