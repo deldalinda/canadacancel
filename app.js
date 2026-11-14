@@ -7,7 +7,7 @@
   if (!root) return;
   var NOW = new Date().getFullYear(), Y0 = 2001, Y1 = 2036, TAGSTEP = 12;
   var INK = { Black: '#1A1A1A', Red: '#D52B1E', Blue: '#1F4FBF', Green: '#1B7F4B', Pink: '#E86AA6' };
-  var S = { view: 'map', q: '', act: true, exp: true, prov: '', tag: '', ink: '', ya: null, yb: null, soon: false, sort: 'place', id: '', per: 50, page: 1, cmp: [], cmpOpen: false };
+  var S = { view: 'map', q: '', act: true, exp: true, prov: '', tag: '', ink: '', ya: null, yb: null, soon: false, sort: 'place', id: '', per: 50, page: 1, cmp: [], cmpOpen: false, strip: store('cpc-strip') !== '0' };
   var CMPMAX = 5;
   var D = [], byId = {}, updated = '', me = null, tagN = TAGSTEP;
   var map, cluster, markers = {}, leafletReady = false, filtered = [];
@@ -74,7 +74,7 @@
   }
   function readHash() {
     var p = new URLSearchParams(location.hash.replace(/^#/, '')), y = /^(\d{4})-(\d{4})$/.exec(p.get('years') || '');
-    S.view = p.get('view') === 'gallery' ? 'gallery' : 'map';
+    S.view = ['gallery', 'timeline'].indexOf(p.get('view')) > -1 ? p.get('view') : 'map';
     S.q = p.get('q') || ''; S.act = p.get('active') !== '0'; S.exp = p.get('expired') !== '0';
     S.prov = p.get('prov') || ''; S.tag = p.get('tag') || ''; S.ink = p.get('ink') || '';
     S.ya = y ? +y[1] : null; S.yb = y ? +y[2] : null; S.soon = p.get('soon') === '1';
@@ -116,10 +116,11 @@
       oninput: debounce(function () { S.q = el.search.value.trim(); go(true); }, 160) });
     el.tabMap = h('button', { class: 'cpc-tab', type: 'button', text: 'Map', onclick: function () { setView('map'); } });
     el.tabGal = h('button', { class: 'cpc-tab', type: 'button', text: 'Gallery', onclick: function () { setView('gallery'); } });
+    el.tabTl = h('button', { class: 'cpc-tab', type: 'button', text: 'Timeline', onclick: function () { setView('timeline'); } });
     var top = h('header', { class: 'cpc-top' }, [
-      h('h1', { class: 'cpc-title', text: "Canada's Pictorial Cancels" }),
-      h('label', { class: 'cpc-search' }, [svg('M11 4a7 7 0 100 14 7 7 0 000-14zM20 20l-3.5-3.5'), el.search]),
-      h('nav', { class: 'cpc-tabs', 'aria-label': 'Views' }, [el.tabMap, el.tabGal])
+      h('img', { class: 'cpc-logo', src: BASE + 'logo.png', alt: '', width: 64, height: 64 }),
+      h('div', { class: 'cpc-ttl' }, [h('h1', { class: 'cpc-title', text: "Canada's Pictorial Cancels" }), el.sub = h('p', { class: 'cpc-sub' })]),
+      h('nav', { class: 'cpc-tabs', 'aria-label': 'Views' }, [el.tabMap, el.tabGal, el.tabTl])
     ]);
     el.count = h('span', { class: 'cpc-count', role: 'status' });
     function yr() {
@@ -141,8 +142,8 @@
         .map(function (o) { return h('option', { value: o[0], text: o[1] }); }));
     var bar = h('div', { class: 'cpc-bar' }, [
       h('button', { class: 'cpc-btn cpc-filtertoggle', type: 'button', text: 'Filters', onclick: function () { el.filters.classList.toggle('open'); } }),
-      el.count,
-      h('div', { class: 'cpc-year' }, [h('label', {}, [el.yOn, 'In use between']), el.yOut, el.yDual]),
+      h('label', { class: 'cpc-search' }, [svg('M11 4a7 7 0 100 14 7 7 0 000-14zM20 20l-3.5-3.5'), el.search]),
+      h('div', { class: 'cpc-year' }, [el.count, h('label', {}, [el.yOn, 'in use between']), el.yOut, el.yDual]),
       el.sort,
       h('button', { class: 'cpc-btn', type: 'button', text: 'Near me', onclick: locate }),
       el.dl = h('select', { class: 'cpc-btn', 'aria-label': 'Download the cancels shown', onchange: function () { var v = el.dl.value; el.dl.value = ''; if (v === 'csv') csv(); else if (v) zip(v); } }, [
@@ -153,18 +154,30 @@
     el.grip = h('button', { class: 'cpc-grip', type: 'button', 'aria-label': 'Drag to resize the filter panel', title: 'Drag to resize' });
     el.filters = h('aside', { class: 'cpc-filters', 'aria-label': 'Filters' }, [el.fbody, el.grip]);
     grip();
-    el.mapWrap = h('div', {}, [
+    el.stripB = h('button', { class: 'cpc-stripb', type: 'button', onclick: function () {
+      S.strip = !S.strip; store('cpc-strip', S.strip ? '1' : '0'); paintStrip();
+      if (map) setTimeout(function () { map.invalidateSize({ pan: false }); renderStrip(); }, 0); } });
+    el.mapWrap = h('div', { class: 'cpc-mapw' }, [
       el.map = h('div', { class: 'cpc-map', role: 'application', 'aria-label': 'Map of post offices with pictorial cancels' }),
-      el.stripH = h('div', { class: 'cpc-strip-h' }), el.strip = h('div', { class: 'cpc-strip' })
+      h('div', { class: 'cpc-strip-h' }, [el.stripT = h('span', { role: 'status' }), el.stripB]), el.strip = h('div', { class: 'cpc-strip' })
     ]);
+    paintStrip();
+    el.tlWrap = h('div', { class: 'cpc-tl' });
     el.tools = h('div', { class: 'cpc-tools' }); el.tools2 = h('div', { class: 'cpc-tools foot' });
     el.galWrap = h('div', {}, [el.tools, el.grid = h('div', { class: 'cpc-grid' }), el.tools2]);
     el.detail = h('aside', { class: 'cpc-detail', 'aria-label': 'Selected cancel', hidden: true });
-    el.body = h('div', { class: 'cpc-body' }, [el.filters, h('main', {}, [el.mapWrap, el.galWrap]), el.detail]);
+    el.body = h('div', { class: 'cpc-body' }, [el.filters, h('main', {}, [el.mapWrap, el.galWrap, el.tlWrap]), el.detail]);
     el.tray = h('div', { class: 'cpc-tray', role: 'region', 'aria-label': 'Comparison', hidden: true });
     el.cmp = h('div', { class: 'cpc-compare', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Compare cancels', hidden: true });
     root.appendChild(top); root.appendChild(bar); root.appendChild(el.body); root.appendChild(el.tray); root.appendChild(el.cmp);
     document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && S.cmpOpen && !document.querySelector('.cpc-lightbox')) closeCompare(); });
+  }
+  function paintStrip() {
+    el.mapWrap.classList.toggle('nostrip', !S.strip); el.strip.hidden = !S.strip;
+    el.stripB.textContent = S.strip ? '▼' : '▲';
+    el.stripB.setAttribute('aria-expanded', S.strip ? 'true' : 'false');
+    el.stripB.setAttribute('aria-label', (S.strip ? 'Hide' : 'Show') + ' the cancels in this part of the map');
+    el.stripB.title = S.strip ? 'Hide' : 'Show';
   }
   function paintYears() {
     var a = +el.ya.value, b = +el.yb.value, span = Y1 - Y0;
@@ -348,6 +361,49 @@
     el.tools2.appendChild(pager());
   }
 
+  /* ---------- timeline ---------- */
+  function tlSegs(c) {
+    var A = expired(c) ? 'e' : 'a', s = c.s, e = c.e;
+    if (s && e) return [[s, e, A]];
+    if (s && c.open) return [[s, NOW, A]];
+    if (!s && c.open) return [[Y0, NOW - 1.5, 'u'], [NOW - 1.5, NOW, A]];
+    if (s) return [[s, Math.min(s + 1, NOW), A], [Math.min(s + 1, NOW), NOW, 'u']];
+    if (e) return [[Y0, e - 1, 'u'], [e - 1, e, A]];
+    return [[Y0, NOW, 'u']];
+  }
+  function renderTimeline() {
+    var w = el.tlWrap, span = Y1 - Y0, x = function (y) { return (y - Y0) / span * 100; }, step = 5 / span * 100 + '%';
+    w.innerHTML = '';
+    w.appendChild(h('div', { class: 'cpc-tl-leg' }, [h('span', { text: 'When was each cancel in use?' }),
+      h('span', { class: 'k' }, [h('i', { class: 'a' }), 'Active']), h('span', { class: 'k' }, [h('i', { class: 'e' }), 'Expired']),
+      h('span', { class: 'k' }, [h('i', { class: 'u' }), 'Date unknown']), h('span', { class: 'k' }, [h('i', { class: 'now' }), 'Today'])]));
+    var ticks = []; for (var y = Y0; y <= Y1; y += 5) ticks.push(h('span', { class: (y === Y0 ? 'first' : y >= Y1 - 1 ? 'last' : '') + (Math.abs(y - NOW) < 3 ? ' now' : ''), style: 'left:' + x(y) + '%', text: String(y) }));
+    w.appendChild(h('div', { class: 'cpc-tl-ax', 'aria-hidden': 'true' }, [h('span', { class: 'h', text: 'Cancel' }), h('span', { class: 't' }, ticks)]));
+    if (!filtered.length) { w.appendChild(h('p', { class: 'cpc-empty', text: 'No cancels match these filters.' })); return; }
+    var groups = [], gi = {};
+    filtered.forEach(function (c) { if (gi[c.prov] == null) { gi[c.prov] = groups.length; groups.push([c.prov, []]); } groups[gi[c.prov]][1].push(c); });
+    var frag = document.createDocumentFragment();
+    groups.forEach(function (g) {
+      frag.appendChild(h('div', { class: 'cpc-tl-g' }, [h('h3', { text: g[0] }), h('span', { text: g[1].length + (g[1].length === 1 ? ' cancel' : ' cancels') })]));
+      g[1].forEach(function (c) {
+        var segs = tlSegs(c), lx = Math.min(x(segs[0][0]), 78);
+        var b = h('button', { class: 'cpc-tlr', type: 'button', 'aria-current': S.id === c.id ? 'true' : null, 'aria-label': c.po + ', ' + label(c) + ', ' + stName(c) + ', ' + (c.run || 'dates unknown'),
+          onclick: function () { select(c.id); } }, [
+          h('span', { class: 'who' }, [h('img', { src: thumb(c), alt: '', loading: 'lazy', decoding: 'async', width: 46, height: 46 }),
+            h('span', { class: 'nm' }, [h('strong', { text: c.po }), h('small', { text: label(c) })])]),
+          h('span', { class: 'tk', style: '--step:' + step }, [h('b', { style: 'left:' + x(NOW) + '%' })].concat(
+            segs.map(function (q) { return h('i', { class: q[2], style: 'left:' + x(q[0]) + '%;width:' + Math.max(0.8, x(q[1]) - x(q[0])) + '%' }); }),
+            [h('em', { style: 'left:' + lx + '%', text: c.run || runShort(c).replace('–', ' – ') })]))
+        ]);
+        b._id = c.id; frag.appendChild(b);
+      });
+    });
+    w.appendChild(frag);
+  }
+  function markTimeline() {
+    el.tlWrap.querySelectorAll('.cpc-tlr').forEach(function (n) { if (n._id === S.id) n.setAttribute('aria-current', 'true'); else n.removeAttribute('aria-current'); });
+  }
+
   /* ---------- map ---------- */
   function loadLeaflet(cb) {
     if (window.L && L.markerClusterGroup) return cb();
@@ -449,8 +505,8 @@
   function renderStrip() {
     if (!leafletReady || S.view !== 'map') return;
     var b = map.getBounds(), inView = filtered.filter(function (c) { return b.contains([c.lat, c.lng]); });
-    el.stripH.textContent = inView.length ? inView.length + (inView.length === 1 ? ' cancel' : ' cancels') + ' in this part of the map' : 'No cancels in this part of the map. Zoom out or move the map.';
-    el.strip.innerHTML = '';
+    el.stripT.textContent = inView.length ? inView.length + (inView.length === 1 ? ' cancel' : ' cancels') + ' in this part of the map' : 'No cancels in this part of the map. Zoom out or move the map.';
+    el.strip.innerHTML = ''; if (!S.strip) return;
     var frag = document.createDocumentFragment(); inView.slice(0, 40).forEach(function (c) { frag.appendChild(card(c)); }); el.strip.appendChild(frag);
   }
 
@@ -461,7 +517,7 @@
     renderDetail(); writeHash();
     root.querySelectorAll('.cpc-card[aria-current]').forEach(function (n) { n.removeAttribute('aria-current'); });
     root.querySelectorAll('.cpc-card').forEach(function (n) { if (n._id === id) n.setAttribute('aria-current', 'true'); });
-    if (S.view === 'gallery') renderGallery(); else renderStrip();
+    if (S.view === 'gallery') renderGallery(); else if (S.view === 'timeline') markTimeline(); else renderStrip();
     halo();
   }
   var haloM = null;
@@ -555,9 +611,10 @@
 
   /* ---------- actions ---------- */
   function setView(v) {
-    S.view = v; el.mapWrap.hidden = v !== 'map'; el.galWrap.hidden = v !== 'gallery';
-    el.tabMap.setAttribute('aria-pressed', v === 'map'); el.tabGal.setAttribute('aria-pressed', v === 'gallery');
+    S.view = v; el.mapWrap.hidden = v !== 'map'; el.galWrap.hidden = v !== 'gallery'; el.tlWrap.hidden = v !== 'timeline';
+    el.tabMap.setAttribute('aria-pressed', v === 'map'); el.tabGal.setAttribute('aria-pressed', v === 'gallery'); el.tabTl.setAttribute('aria-pressed', v === 'timeline');
     if (v === 'map') { if (!leafletReady) loadLeaflet(initMap); else setTimeout(function () { map.invalidateSize(); renderMap(false); }, 0); }
+    else if (v === 'timeline') renderTimeline();
     else renderGallery();
     writeHash();
   }
@@ -608,12 +665,11 @@
     filtered = sortList(D.filter(function (c) { return match(c); }));
     el.count.innerHTML = '';
     el.count.appendChild(h('b', { text: filtered.length + (filtered.length === 1 ? ' cancel' : ' cancels') }));
-    if (filtered.length !== D.length) el.count.appendChild(document.createTextNode(' of ' + D.length));
     el.yOn.checked = !!S.ya; el.yDual.classList.toggle('off', !S.ya);
     if (S.ya) { el.ya.value = S.ya; el.yb.value = S.yb; } paintYears();
     el.sort.value = S.sort;
     renderFilters();
-    if (S.view === 'gallery') renderGallery(); else renderMap(fit);
+    if (S.view === 'gallery') renderGallery(); else if (S.view === 'timeline') renderTimeline(); else renderMap(fit);
     writeHash();
   }
 
@@ -622,6 +678,8 @@
   el.count.textContent = 'Loading cancels…';
   fetch(BASE + 'data.json?t=' + Math.floor(Date.now() / 36e5)).then(function (r) { return r.json(); }).then(function (j) {
     D = j.cancels; updated = j.updated;
+    var nP = {}; D.forEach(function (c) { nP[c.prov] = 1; });
+    el.sub.textContent = D.length + ' postmarks from ' + Object.keys(nP).length + ' provinces and territories';
     D.forEach(function (c, i) { c._o = i; byId[c.id] = c; c._t = (c.tags || []).map(function (t) { return t.toLowerCase(); });
       c._s = [c.po, c.city, c.prov, c.pc, c.design, c.nick, c._t.join(' '), c.designer, c.ink].join(' ').toLowerCase(); });
     if (S.sort === 'near') S.sort = 'place';
