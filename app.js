@@ -363,7 +363,12 @@
     map = L.map(el.map, { minZoom: 2, maxZoom: 19, zoomSnap: 0.25, worldCopyJump: true, scrollWheelZoom: false }).setView([58, -96], 3);
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' }).addTo(map);
     map.on('click', function () { map.scrollWheelZoom.enable(); });
-    cluster = L.markerClusterGroup({ showCoverageOnHover: false, maxClusterRadius: 44, spiderfyOnMaxZoom: true, spiderfyDistanceMultiplier: 3.2, spiderLegPolylineOptions: { weight: 1.5, color: '#1A1D23', opacity: 0.45 },
+    cluster = L.markerClusterGroup({ showCoverageOnHover: false, maxClusterRadius: 44, spiderfyOnMaxZoom: true, spiderfyShapePositions: function (n, c) {
+        // a regular polygon: every dot the same distance from the centre and from its neighbours
+        var r = Math.max(60, (3.2 * 25 * (n + 2)) / (2 * Math.PI)), out = [];
+        for (var i = 0; i < n; i++) { var a = -Math.PI / 2 + i * 2 * Math.PI / n; out.push(L.point(c.x + r * Math.cos(a), c.y + r * Math.sin(a))); }
+        return out;
+      }, spiderLegPolylineOptions: { weight: 1.5, color: '#1A1D23', opacity: 0.45 },
       iconCreateFunction: function (cl) {
         var ms = cl.getAllChildMarkers(), n = ms.length, e = ms.filter(function (m) { return m.options.cpcExp; }).length, d = Math.round(30 + Math.sqrt(n) * 4);
         return L.divIcon({ html: '<div class="cpc-cluster' + (e > n - e ? ' expired' : '') + '" style="width:' + d + 'px;height:' + d + 'px" title="' + (n - e) + ' active, ' + e + ' expired">' + n + '</div>', className: '', iconSize: [d, d] });
