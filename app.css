@@ -339,3 +339,19 @@
 .cpc-tlr .tk em{position:absolute;top:7px;font-size:12px;font-style:normal;color:var(--muted);white-space:nowrap}
 @media (max-width:1100px){.cpc-tl-ax,.cpc-tlr{grid-template-columns:minmax(120px,38%) minmax(0,1fr)}.cpc-tlr img{flex-basis:38px;width:38px;height:38px}}
 @media (max-width:560px){.cpc-tabs{width:100%}.cpc-tab{padding:0 10px}.cpc-logo{width:52px;height:52px}.cpc-bar .cpc-search{flex-basis:100%}}
+/* v25: grey strip band with centred toggle; sort criterion + direction */
+.cpc-stripbox{margin-top:12px;padding:0 14px 6px;background:#E9EBEF;border-radius:16px}
+.cpc-strip-h{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:12px;margin:0;padding:6px 0;font-size:14px;color:var(--muted)}
+.cpc-stripb{margin:0;width:64px;height:28px;border:0;border-radius:14px;background:#D5D9DF;color:var(--ink);font-size:12px}
+.cpc-stripb:hover{background:#C4C9D2}
+.cpc-mapw.nostrip .cpc-stripbox{padding-bottom:0}
+.cpc-strip{padding:4px 2px 12px}
+.cpc-strip::-webkit-scrollbar-track{background:#D5D9DF}
+.cpc-strip::-webkit-scrollbar-thumb{border-color:#D5D9DF}
+.cpc-sort{display:flex;align-items:center;gap:6px}
+.cpc-sort .l{font-size:14px;color:var(--muted);white-space:nowrap}
+.cpc-dir{white-space:nowrap}
+.cpc-tlr .nm small.pv{font-size:12px;color:var(--red-d);font-weight:600}
+.cpc-tlr{min-height:66px}.cpc-tlr .tk{height:66px}.cpc-tlr .tk i{top:30px}
+.cpc-bar .cpc-search{flex:0 1 280px}
+.cpc-year{flex:1 1 300px}

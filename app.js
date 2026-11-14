@@ -7,7 +7,7 @@
   if (!root) return;
   var NOW = new Date().getFullYear(), Y0 = 2001, Y1 = 2036, TAGSTEP = 12;
   var INK = { Black: '#1A1A1A', Red: '#D52B1E', Blue: '#1F4FBF', Green: '#1B7F4B', Pink: '#E86AA6' };
-  var S = { view: 'map', q: '', act: true, exp: true, prov: '', tag: '', ink: '', ya: null, yb: null, soon: false, sort: 'place', id: '', per: 50, page: 1, cmp: [], cmpOpen: false, strip: store('cpc-strip') !== '0' };
+  var S = { view: 'map', q: '', act: true, exp: true, prov: '', tag: '', ink: '', ya: null, yb: null, soon: false, sort: 'place', id: '', per: 50, page: 1, cmp: [], cmpOpen: false, dir: 1, strip: store('cpc-strip') !== '0' };
   var CMPMAX = 5;
   var D = [], byId = {}, updated = '', me = null, tagN = TAGSTEP;
   var map, cluster, markers = {}, leafletReady = false, filtered = [];
@@ -64,7 +64,8 @@
     ['prov', 'tag', 'ink', 'id'].forEach(function (k) { if (S[k]) p.set(k, S[k]); });
     if (S.ya) p.set('years', S.ya + '-' + S.yb);
     if (S.soon) p.set('soon', '1');
-    if (S.sort !== 'place') p.set('sort', S.sort);
+    if (S.sort !== 'prov') p.set('sort', S.sort);
+    if (S.dir !== defDir(S.sort)) p.set('dir', S.dir > 0 ? 'up' : 'down');
     if (S.per !== 50) p.set('per', S.per);
     if (S.page > 1) p.set('page', S.page);
     if (S.cmp.length) p.set('cmp', S.cmp.join(','));
@@ -78,7 +79,9 @@
     S.q = p.get('q') || ''; S.act = p.get('active') !== '0'; S.exp = p.get('expired') !== '0';
     S.prov = p.get('prov') || ''; S.tag = p.get('tag') || ''; S.ink = p.get('ink') || '';
     S.ya = y ? +y[1] : null; S.yb = y ? +y[2] : null; S.soon = p.get('soon') === '1';
-    S.sort = p.get('sort') || 'place'; S.id = p.get('id') || '';
+    S.sort = { place: 'prov', oldest: 'run', ending: 'run' }[p.get('sort')] || p.get('sort') || 'prov';
+    if (!SORTS[S.sort]) S.sort = 'prov';
+    S.dir = p.get('dir') === 'up' ? 1 : p.get('dir') === 'down' ? -1 : defDir(S.sort); S.id = p.get('id') || '';
     S.per = p.get('per') === 'all' ? 'all' : (parseInt(p.get('per'), 10) || 50); S.page = parseInt(p.get('page'), 10) || 1;
     S.cmp = (p.get('cmp') || '').split(',').filter(Boolean).slice(0, CMPMAX); S.cmpOpen = p.get('compare') === '1';
   }
@@ -94,15 +97,30 @@
     if (S.q) { var w = S.q.toLowerCase().split(/\s+/).filter(Boolean); for (var i = 0; i < w.length; i++) if (c._s.indexOf(w[i]) < 0) return false; }
     return true;
   }
+  var SORTS = { prov: ['Province', 'A → Z', 'Z → A'], po: ['Post office', 'A → Z', 'Z → A'], added: ['Added time', 'Earliest first', 'Latest first'],
+    run: ['Run dates', 'Earliest first', 'Latest first'], near: ['Distance from me', 'Nearest first', 'Farthest first'] };
+  function defDir(k) { return k === 'added' ? -1 : 1; }
+  function paintSort() {
+    el.sort.value = S.sort;
+    var t = SORTS[S.sort], up = S.dir > 0;
+    el.sortDir.textContent = (up ? '↑ ' : '↓ ') + (up ? t[1] : t[2]);
+    el.sortDir.setAttribute('aria-label', 'Order: ' + (up ? t[1] : t[2]) + '. Click to reverse');
+  }
   function sortList(list) {
     if (S.sort === 'near' && me) list.forEach(function (c) { c._d = dist(me, c); });
-    var f = {
-      added: function (a, b) { return a.added < b.added ? 1 : a.added > b.added ? -1 : a._o - b._o; },
-      oldest: function (a, b) { return (a.s || 9999) - (b.s || 9999) || a._o - b._o; },
-      ending: function (a, b) { return (a.e || 9999) - (b.e || 9999) || a._o - b._o; },
-      near: function (a, b) { return a._d - b._d; }
-    }[S.sort];
-    return f ? list.slice().sort(f) : list;
+    var d = S.dir, key = {
+      prov: function (c) { return c.prov; },
+      po: function (c) { return c.po; },
+      added: function (c) { return c.added || null; },
+      run: function (c) { return c.s || null; },
+      near: function (c) { return c._d != null ? c._d : null; }
+    }[S.sort] || function (c) { return c.prov; };
+    return list.slice().sort(function (a, b) {
+      var x = key(a), y = key(b);
+      if (x == null || y == null) { if (x == null && y == null) return a._o - b._o; return x == null ? 1 : -1; }
+      var r = typeof x === 'string' ? x.localeCompare(y, 'en', { sensitivity: 'base' }) : x - y;
+      return r * d || a._o - b._o;
+    });
   }
 
   /* ---------- skeleton ---------- */
@@ -135,16 +153,17 @@
     el.yFill = h('span', { class: 'fill' });
     el.yDual = h('div', { class: 'cpc-dual' }, [h('span', { class: 'trk' }), el.yFill, el.ya, el.yb]);
     el.yOut = h('output', { class: 'mono' });
-    el.sort = h('select', { class: 'cpc-btn', 'aria-label': 'Sort', onchange: function () {
+    el.sort = h('select', { class: 'cpc-btn', 'aria-label': 'Sort by', onchange: function () {
       if (el.sort.value === 'near' && !me) { el.sort.value = S.sort; return locate(); }
-      S.sort = el.sort.value; go(); } },
-      [['place', 'Sort: province, town'], ['added', 'Sort: newest added'], ['oldest', 'Sort: oldest first'], ['ending', 'Sort: ending soonest'], ['near', 'Sort: nearest to me']]
-        .map(function (o) { return h('option', { value: o[0], text: o[1] }); }));
+      S.sort = el.sort.value; S.dir = defDir(S.sort); go(); } },
+      Object.keys(SORTS).map(function (k) { return h('option', { value: k, text: SORTS[k][0] }); }));
+    el.sortDir = h('button', { class: 'cpc-btn cpc-dir', type: 'button', onclick: function () { S.dir = -S.dir; go(); } });
+    el.sortBox = h('div', { class: 'cpc-sort', role: 'group', 'aria-label': 'Sort' }, [h('span', { class: 'l', text: 'Sort by' }), el.sort, el.sortDir]);
     var bar = h('div', { class: 'cpc-bar' }, [
       h('button', { class: 'cpc-btn cpc-filtertoggle', type: 'button', text: 'Filters', onclick: function () { el.filters.classList.toggle('open'); } }),
       h('label', { class: 'cpc-search' }, [svg('M11 4a7 7 0 100 14 7 7 0 000-14zM20 20l-3.5-3.5'), el.search]),
       h('div', { class: 'cpc-year' }, [el.count, h('label', {}, [el.yOn, 'in use between']), el.yOut, el.yDual]),
-      el.sort,
+      el.sortBox,
       h('button', { class: 'cpc-btn', type: 'button', text: 'Near me', onclick: locate }),
       el.dl = h('select', { class: 'cpc-btn', 'aria-label': 'Download the cancels shown', onchange: function () { var v = el.dl.value; el.dl.value = ''; if (v === 'csv') csv(); else if (v) zip(v); } }, [
         h('option', { value: '', text: 'Download…' }), h('option', { value: 'csv', text: 'List only (CSV)' }),
@@ -159,7 +178,7 @@
       if (map) setTimeout(function () { map.invalidateSize({ pan: false }); renderStrip(); }, 0); } });
     el.mapWrap = h('div', { class: 'cpc-mapw' }, [
       el.map = h('div', { class: 'cpc-map', role: 'application', 'aria-label': 'Map of post offices with pictorial cancels' }),
-      h('div', { class: 'cpc-strip-h' }, [el.stripT = h('span', { role: 'status' }), el.stripB]), el.strip = h('div', { class: 'cpc-strip' })
+      h('section', { class: 'cpc-stripbox', 'aria-label': 'Cancels in this part of the map' }, [h('div', { class: 'cpc-strip-h' }, [el.stripT = h('span', { role: 'status' }), el.stripB, h('span')]), el.strip = h('div', { class: 'cpc-strip' })])
     ]);
     paintStrip();
     el.tlWrap = h('div', { class: 'cpc-tl' });
@@ -380,17 +399,14 @@
     var ticks = []; for (var y = Y0; y <= Y1; y += 5) ticks.push(h('span', { class: (y === Y0 ? 'first' : y >= Y1 - 1 ? 'last' : '') + (Math.abs(y - NOW) < 3 ? ' now' : ''), style: 'left:' + x(y) + '%', text: String(y) }));
     w.appendChild(h('div', { class: 'cpc-tl-ax', 'aria-hidden': 'true' }, [h('span', { class: 'h', text: 'Cancel' }), h('span', { class: 't' }, ticks)]));
     if (!filtered.length) { w.appendChild(h('p', { class: 'cpc-empty', text: 'No cancels match these filters.' })); return; }
-    var groups = [], gi = {};
-    filtered.forEach(function (c) { if (gi[c.prov] == null) { gi[c.prov] = groups.length; groups.push([c.prov, []]); } groups[gi[c.prov]][1].push(c); });
     var frag = document.createDocumentFragment();
-    groups.forEach(function (g) {
-      frag.appendChild(h('div', { class: 'cpc-tl-g' }, [h('h3', { text: g[0] }), h('span', { text: g[1].length + (g[1].length === 1 ? ' cancel' : ' cancels') })]));
-      g[1].forEach(function (c) {
+    [filtered].forEach(function (g) {
+      g.forEach(function (c) {
         var segs = tlSegs(c), lx = Math.min(x(segs[0][0]), 78);
         var b = h('button', { class: 'cpc-tlr', type: 'button', 'aria-current': S.id === c.id ? 'true' : null, 'aria-label': c.po + ', ' + label(c) + ', ' + stName(c) + ', ' + (c.run || 'dates unknown'),
           onclick: function () { select(c.id); } }, [
           h('span', { class: 'who' }, [h('img', { src: thumb(c), alt: '', loading: 'lazy', decoding: 'async', width: 46, height: 46 }),
-            h('span', { class: 'nm' }, [h('strong', { text: c.po }), h('small', { text: label(c) })])]),
+            h('span', { class: 'nm' }, [h('strong', { text: c.po }), h('small', { text: label(c) }), h('small', { class: 'pv', text: c.prov + (c._d != null && S.sort === 'near' ? ' · ' + Math.round(c._d) + ' km' : '') })])]),
           h('span', { class: 'tk', style: '--step:' + step }, [h('b', { style: 'left:' + x(NOW) + '%' })].concat(
             segs.map(function (q) { return h('i', { class: q[2], style: 'left:' + x(q[0]) + '%;width:' + Math.max(0.8, x(q[1]) - x(q[0])) + '%' }); }),
             [h('em', { style: 'left:' + lx + '%', text: c.run || runShort(c).replace('–', ' – ') })]))
@@ -621,7 +637,7 @@
   function locate() {
     if (!navigator.geolocation) return toast('Location is not available in this browser');
     navigator.geolocation.getCurrentPosition(function (p) {
-      me = { lat: p.coords.latitude, lng: p.coords.longitude }; S.sort = 'near'; go();
+      me = { lat: p.coords.latitude, lng: p.coords.longitude }; S.sort = 'near'; S.dir = 1; go();
       if (leafletReady && S.view === 'map') map.setView([me.lat, me.lng], 8);
       toast('Sorted by distance from you');
     }, function () { toast('Could not get your location'); }, { timeout: 8000 });
@@ -667,7 +683,7 @@
     el.count.appendChild(h('b', { text: filtered.length + (filtered.length === 1 ? ' cancel' : ' cancels') }));
     el.yOn.checked = !!S.ya; el.yDual.classList.toggle('off', !S.ya);
     if (S.ya) { el.ya.value = S.ya; el.yb.value = S.yb; } paintYears();
-    el.sort.value = S.sort;
+    paintSort();
     renderFilters();
     if (S.view === 'gallery') renderGallery(); else if (S.view === 'timeline') renderTimeline(); else renderMap(fit);
     writeHash();
@@ -682,7 +698,7 @@
     el.sub.textContent = D.length + ' postmarks from ' + Object.keys(nP).length + ' provinces and territories';
     D.forEach(function (c, i) { c._o = i; byId[c.id] = c; c._t = (c.tags || []).map(function (t) { return t.toLowerCase(); });
       c._s = [c.po, c.city, c.prov, c.pc, c.design, c.nick, c._t.join(' '), c.designer, c.ink].join(' ').toLowerCase(); });
-    if (S.sort === 'near') S.sort = 'place';
+    if (S.sort === 'near') { S.sort = 'prov'; S.dir = 1; }
     var pg = S.page; setView(S.view); update(true); if (pg > 1 && S.view === 'gallery') { S.page = pg; renderGallery(); writeHash(); }
     S.cmp = S.cmp.filter(function (id) { return byId[id]; }); renderTray(); if (S.cmpOpen) renderCompare();
     if (S.id && byId[S.id]) select(S.id); else S.id = '';
