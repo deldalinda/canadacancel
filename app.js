@@ -165,8 +165,8 @@
       h('label', { class: 'cpc-search' }, [svg('M11 4a7 7 0 100 14 7 7 0 000-14zM20 20l-3.5-3.5'), el.search]),
       h('div', { class: 'cpc-year' }, [el.count, h('label', {}, [el.yOn, 'in use between']), el.yOut, el.yDual]),
       el.sortBox,
-      el.dl = h('select', { class: 'cpc-btn', 'aria-label': 'Download the selection', onfocus: paintDl, onmousedown: paintDl, onchange: function () { var v = el.dl.value; el.dl.value = ''; if (v === 'csv') csv(); else if (v) zip(v); } }, [
-        h('option', { value: '', text: 'Download the selection…' }), el.dlHead = h('option', { value: '', disabled: '', text: '' }), h('option', { value: 'csv', text: 'List only (CSV)' }),
+      el.dl = h('select', { class: 'cpc-btn', 'aria-label': 'Download the selection', onfocus: paintDl, onmousedown: paintDl, onchange: function () { var v = el.dl.value; el.dl.value = ''; if (v === 'csv') csv(); else if (v === 'kml') kml(); else if (v) zip(v); } }, [
+        h('option', { value: '', text: 'Download the selection…' }), el.dlHead = h('option', { value: '', disabled: '', text: '' }), h('option', { value: 'csv', text: 'List only (CSV)' }), h('option', { value: 'kml', text: 'Map file with images, for Google My Maps (KML)' }),
         h('option', { value: 'thumb', text: 'List + small images (ZIP)' }), h('option', { value: 'full', text: 'List + full images (ZIP)' })])
     ]);
     el.fbody = h('div', { style: 'display:contents' });
@@ -725,6 +725,24 @@
     })).join('\r\n');
   }
   function save(blob, name) { var a = h('a', { href: URL.createObjectURL(blob), download: name }); document.body.appendChild(a); a.click(); a.remove(); }
+  /* KML for Google My Maps / Google Earth: gx_media_links in ExtendedData makes My Maps show the image in each pin's info box (a CSV column does not) */
+  function kml() {
+    var sel = selection(); if (!sel.length) return toast('No cancels to download');
+    var x = function (v) { return String(v == null ? '' : Array.isArray(v) ? v.join(', ') : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); };
+    var cols = [['Post Office', 'po'], ['Nickname', 'nick'], ['Status', 'status'], ['Run Dates', 'run'], ['Colour', 'ink'], ['Design', 'design'], ['Designer', 'designer'], ['Tags', 'tags'], ['City', 'city'], ['Province', 'prov'], ['Address', 'addr'], ['Notes', 'notes'], ['Design story', 'story']];
+    var icon = 'https://www.gstatic.com/mapspro/images/stock/503-wht-blank_maps.png';
+    var style = function (id, c) { return '<Style id="' + id + '"><IconStyle><color>' + c + '</color><scale>1</scale><Icon><href>' + icon + '</href></Icon></IconStyle></Style>'; };
+    var out = ['<?xml version="1.0" encoding="UTF-8"?>', '<kml xmlns="http://www.opengis.net/kml/2.2"><Document>',
+      '<name>' + x("Canada's Pictorial Cancels (" + sel.length + ')') + '</name>', style('active', 'ff33c920'), style('expired', 'ff481de1')];
+    sel.forEach(function (c) {
+      out.push('<Placemark><name>' + x(c.po + (c.nick ? ' \u2013 ' + cap(c.nick) : '')) + '</name><styleUrl>#' + st(c) + '</styleUrl><ExtendedData>' +
+        cols.map(function (k) { var v = k[1] === 'status' ? stName(c) : c[k[1]]; return v == null || v === '' ? '' : '<Data name="' + x(k[0]) + '"><value>' + x(v) + '</value></Data>'; }).join('') +
+        '<Data name="gx_media_links"><value>' + x(full(c)) + '</value></Data></ExtendedData>' +
+        '<Point><coordinates>' + c.lng + ',' + c.lat + ',0</coordinates></Point></Placemark>');
+    });
+    out.push('</Document></kml>');
+    save(new Blob([out.join('\n')], { type: 'application/vnd.google-earth.kml+xml' }), 'pictorial-cancels.kml');
+  }
   function csv() { if (!selection().length) return toast('No cancels to download'); save(new Blob([table(false)], { type: 'text/csv' }), 'pictorial-cancels.csv'); }
   function zip(kind) {
     var sel = selection(), n = sel.length, mb = Math.round(n * (kind === 'full' ? 0.14 : 0.024));
