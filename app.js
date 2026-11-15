@@ -219,10 +219,15 @@
 
   /* ---------- filter column ---------- */
   function chip(kids, on, fn, cls) { return h('button', { class: 'cpc-chip ' + (cls || ''), type: 'button', 'aria-pressed': on ? 'true' : 'false', onclick: fn }, kids); }
+  /* sidebar counts follow what is on screen: in map view only the visible part of the map counts */
+  function inScope(c) {
+    if (S.view !== 'map' || !leafletReady) return true;
+    var b = map.getBounds(); return b.contains([c.lat, c.lng]);
+  }
   function tog(arr, v) { var i = arr.indexOf(v); if (i < 0) arr.push(v); else arr.splice(i, 1); }
   function renderFilters() {
     var a = S.act, x = S.exp; S.act = S.exp = true;
-    var base = D.filter(function (c) { return match(c); }); S.act = a; S.exp = x;
+    var base = D.filter(function (c) { return match(c) && inScope(c); }); S.act = a; S.exp = x;
     var nA = base.filter(function (c) { return !expired(c); }).length, nE = base.length - nA;
     var f = el.fbody; f.innerHTML = '';
     f.appendChild(h('div', {}, [h('h2', { class: 'cpc-h', text: 'Status' }), h('div', { class: 'cpc-chips' }, [
@@ -230,7 +235,7 @@
       chip([h('span', { class: 'dot expired' }), 'Expired', h('small', { text: String(nE) })], S.exp, function () { S.exp = !S.exp; if (!S.act && !S.exp) S.act = true; go(); }, 'st expired'),
       chip(['Ending by ' + (NOW + 1)], S.soon, function () { S.soon = !S.soon; go(); })
     ])]));
-    var tc = {}; D.forEach(function (c) { if (match(c, 'tag')) c._t.forEach(function (t) { tc[t] = (tc[t] || 0) + 1; }); });
+    var tc = {}; D.forEach(function (c) { if (match(c, 'tag') && inScope(c)) c._t.forEach(function (t) { tc[t] = (tc[t] || 0) + 1; }); });
     var tags = Object.keys(tc).sort(function (p, q) { return tc[q] - tc[p] || p.localeCompare(q); });
     if (S.tag.length) tags = S.tag.concat(tags.filter(function (t) { return S.tag.indexOf(t) < 0; }));
     var chips = tags.slice(0, Math.max(tagN, S.tag.length)).map(function (t) { return chip([t, h('small', { text: String(tc[t] || 0) })], S.tag.indexOf(t) > -1, function () { tog(S.tag, t); go(true); }); });
@@ -561,7 +566,7 @@
     cluster.on('unspiderfied', function (e) { e.markers.forEach(function (m) { m._sp = false; m.unbindTooltip(); }); });
     cluster.on('animationend', labels);
     map.addLayer(cluster);
-    map.on('moveend', debounce(function () { renderStrip(); labels(); }, 120));
+    map.on('moveend', debounce(function () { renderStrip(); labels(); renderFilters(); }, 120));
     leafletReady = true; renderMap(true); halo();
   }
   function labels() {
@@ -690,6 +695,7 @@
     if (v === 'map') { if (!leafletReady) loadLeaflet(initMap); else setTimeout(function () { map.invalidateSize(); renderMap(false); }, 0); }
     else if (v === 'timeline') renderTimeline();
     else renderGallery();
+    if (D.length) renderFilters();
     writeHash();
   }
   var meM = null;
