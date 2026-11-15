@@ -717,7 +717,8 @@
   function table(withFile) {
     var cols = [['Post Office', 'po'], ['City', 'city'], ['Province', 'prov'], ['Status', 'status'], ['Colour', 'ink'], ['Run Dates', 'run'], ['Design', 'design'], ['Nickname', 'nick'], ['Designer', 'designer'], ['Tags', 'tags'], ['Latitude', 'lat'], ['Longitude', 'lng'], ['Address', 'addr'], ['Notes', 'notes'], ['Design story', 'story']];
     var q = function (v) { v = v == null ? '' : Array.isArray(v) ? v.join(', ') : String(v); return '"' + v.replace(/"/g, '""').replace(/\n/g, ', ') + '"'; };
-    var head = cols.map(function (c) { return q(c[0]); }).concat([q(withFile ? 'Image file' : 'Image link')]).join(',');
+    // header names stay unquoted: a quote right after the byte-order mark makes Google My Maps reject the file
+    var head = cols.map(function (c) { return c[0]; }).concat([withFile ? 'Image file' : 'Image link']).join(',');
     return '\ufeff' + [head].concat(selection().map(function (r) {
       return cols.map(function (c) { return q(c[1] === 'status' ? stName(r) : r[c[1]]); }).concat([q(withFile ? 'images/' + fname(r) : full(r))]).join(',');
     })).join('\r\n');
