@@ -258,7 +258,8 @@
         h('span', { class: 'imw' }, [
           h('img', { class: 'im', src: thumb(c), alt: c.design || c.po, loading: 'lazy', decoding: 'async', width: 360, height: 360 }),
           h('span', { class: 'cpc-badge ' + st(c), text: stName(c) }),
-          isNew ? h('span', { class: 'cpc-new', text: 'NEW' }) : null
+          isNew ? h('span', { class: 'cpc-new', text: 'NEW' }) : null,
+          c.story ? h('span', { class: 'cpc-story', text: 'Design story' }) : null
         ]),
         h('span', { class: 'tx' }, [
           h('span', { class: 'po', text: c.po, title: c.po }),
@@ -403,7 +404,7 @@
         var b = h('button', { class: 'cpc-tlr', type: 'button', 'aria-current': S.id === c.id ? 'true' : null, 'aria-label': c.po + ', ' + label(c) + ', ' + stName(c) + ', ' + (c.run || 'dates unknown'),
           onclick: function () { select(c.id); } }, [
           h('span', { class: 'who' }, [h('img', { src: thumb(c), alt: '', loading: 'lazy', decoding: 'async', width: 46, height: 46 }),
-            h('span', { class: 'nm' }, [h('strong', { text: c.po }), h('small', { text: label(c) }), h('small', { class: 'pv', text: c.prov })])]),
+            h('span', { class: 'nm' }, [h('strong', {}, [c.po, c.story ? h('span', { class: 'cpc-story in', text: 'Design story' }) : null]), h('small', { text: label(c) }), h('small', { class: 'pv', text: c.prov })])]),
           h('span', { class: 'tk', style: '--step:' + step }, [h('b', { style: 'left:' + x(NOW) + '%' })].concat(
             segs.map(function (q) { return h('i', { class: q[2], style: 'left:' + x(q[0]) + '%;width:' + Math.max(0.8, x(q[1]) - x(q[0])) + '%' }); }),
             [h('em', { style: 'left:' + lx + '%', text: c.run || runShort(c).replace('–', ' – ') })]))
@@ -597,12 +598,14 @@
         ]),
         h('div', { class: 'ax' }, [h('span', { text: String(Y0) }), h('span', { text: fuzzy ? 'striped = date unknown' : 'line = today' }), h('span', { text: String(Y1) })])
       ]),
+      c.story ? h('a', { class: 'cpc-storylink', href: c.story, target: '_blank', rel: 'noopener' }, [h('span', { class: 'cpc-story', text: 'Design story' }), h('span', { text: 'Read the design story →' })]) : null,
       h('div', { class: 'cpc-fields' }, [
         field('Status', [h('span', { class: 'dot ' + st(c) }), stName(c)], 'st-' + st(c)),
         field('Colour', c.ink ? [h('span', { class: 'swatch', style: 'background:' + (INK[c.ink] || '#888') }), c.ink] : '—'),
         field('Designer', c.designer || 'Unknown'),
         field('Coordinates', coords(c), 'nowrap'),
         field('Design', c.design || '—', 'wide'),
+        field('Notes', c.notes, 'wide'),
         c.tags ? h('div', { class: 'cpc-f wide' }, [h('span', { class: 'k', text: 'Tags' }), h('span', { class: 'cpc-chips' }, c.tags.map(function (t) {
           return h('button', { class: 'cpc-chip', type: 'button', text: t, onclick: function () { S.tag = t.toLowerCase(); S.id = ''; renderDetail(); go(true); } }); }))]) : null
       ])
@@ -708,7 +711,7 @@
     var nP = {}; D.forEach(function (c) { nP[c.prov] = 1; });
     el.sub.textContent = D.length + ' postmarks from ' + Object.keys(nP).length + ' provinces and territories';
     D.forEach(function (c, i) { c._o = i; byId[c.id] = c; c._t = (c.tags || []).map(function (t) { return t.toLowerCase(); });
-      c._s = [c.po, c.city, c.prov, c.pc, c.design, c.nick, c._t.join(' '), c.designer, c.ink].join(' ').toLowerCase(); });
+      c._s = [c.po, c.city, c.prov, c.pc, c.design, c.nick, c._t.join(' '), c.designer, c.ink, c.notes].join(' ').toLowerCase(); });
 
     var pg = S.page; setView(S.view); update(true); if (pg > 1 && S.view === 'gallery') { S.page = pg; renderGallery(); writeHash(); }
     S.cmp = S.cmp.filter(function (id) { return byId[id]; }); renderTray(); if (S.cmpOpen) renderCompare();

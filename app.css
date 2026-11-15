@@ -361,3 +361,10 @@
 .cpc .cpc-near:hover{background:var(--ground)}
 .cpc .cpc-near.busy{opacity:.6;cursor:progress}
 .cpc-me{width:22px;height:22px;border-radius:50%;background:#1F6FEB;border:4px solid #fff;box-shadow:0 0 0 6px rgba(31,111,235,.25),0 1px 4px rgba(0,0,0,.4)}
+/* v29: design story badge, story link, notes */
+.cpc-story{display:inline-flex;align-items:center;gap:4px;padding:2px 9px;border-radius:10px;background:#1A1D23;color:#fff;font-size:11px;font-weight:700;letter-spacing:.03em;white-space:nowrap}
+.cpc-story::before{content:"✎";font-size:11px}
+.cpc-card .cpc-story{position:absolute;left:13px;bottom:13px}
+.cpc-story.in{margin-left:8px;vertical-align:1px;padding:1px 7px;font-size:10px}
+.cpc-storylink{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;background:#FFF1F0;border:1px solid #F5C2BD;color:var(--red-d)!important;font-size:14px;font-weight:600;text-decoration:none}
+.cpc-storylink:hover{background:#FFE3E0}
