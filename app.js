@@ -7,7 +7,7 @@
   if (!root) return;
   var NOW = new Date().getFullYear(), Y0 = 2001, Y1 = 2036, TAGSTEP = 12;
   var INK = { Black: '#1A1A1A', Red: '#D52B1E', Blue: '#1F4FBF', Green: '#1B7F4B', Pink: '#E86AA6' };
-  var S = { view: 'map', q: '', act: true, exp: true, prov: '', tag: '', ink: '', ya: null, yb: null, soon: false, sort: 'place', id: '', per: 50, page: 1, cmp: [], cmpOpen: false, dir: 1, strip: store('cpc-strip') !== '0' };
+  var S = { view: 'map', q: '', act: true, exp: true, prov: [], tag: [], ink: [], ya: null, yb: null, soon: false, sort: 'place', id: '', per: 50, page: 1, cmp: [], cmpOpen: false, dir: 1, strip: store('cpc-strip') !== '0' };
   var CMPMAX = 5;
   var D = [], byId = {}, updated = '', me = null, tagN = TAGSTEP;
   var map, cluster, markers = {}, leafletReady = false, filtered = [];
@@ -61,7 +61,8 @@
     if (S.q) p.set('q', S.q);
     if (!S.act) p.set('active', '0');
     if (!S.exp) p.set('expired', '0');
-    ['prov', 'tag', 'ink', 'id'].forEach(function (k) { if (S[k]) p.set(k, S[k]); });
+    ['prov', 'tag', 'ink'].forEach(function (k) { if (S[k].length) p.set(k, S[k].join(',')); });
+    if (S.id) p.set('id', S.id);
     if (S.ya) p.set('years', S.ya + '-' + S.yb);
     if (S.soon) p.set('soon', '1');
     if (S.sort !== 'prov') p.set('sort', S.sort);
@@ -78,7 +79,8 @@
     var p = new URLSearchParams(location.hash.replace(/^#/, '')), y = /^(\d{4})-(\d{4})$/.exec(p.get('years') || '');
     S.view = ['gallery', 'timeline'].indexOf(p.get('view')) > -1 ? p.get('view') : 'map';
     S.q = p.get('q') || ''; S.act = p.get('active') !== '0'; S.exp = p.get('expired') !== '0';
-    S.prov = p.get('prov') || ''; S.tag = p.get('tag') || ''; S.ink = p.get('ink') || '';
+    var list = function (k) { return (p.get(k) || '').split(',').filter(Boolean); };
+    S.prov = list('prov'); S.tag = list('tag'); S.ink = list('ink');
     S.ya = y ? +y[1] : null; S.yb = y ? +y[2] : null; S.soon = p.get('soon') === '1';
     S.sort = { place: 'prov', oldest: 'run', ending: 'run' }[p.get('sort')] || p.get('sort') || 'prov';
     if (!SORTS[S.sort]) S.sort = 'prov';
@@ -90,11 +92,11 @@
   /* ---------- filtering ---------- */
   function match(c, skip) {
     if (expired(c) ? !S.exp : !S.act) return false;
-    if (skip !== 'prov' && S.prov && c.prov !== S.prov) return false;
-    if (S.ink && c.ink !== S.ink) return false;
+    if (skip !== 'prov' && S.prov.length && S.prov.indexOf(c.prov) < 0) return false;
+    if (skip !== 'ink' && S.ink.length && S.ink.indexOf(c.ink) < 0) return false;
     if (S.soon && !(c.status === 'Active' && c.e && c.e <= NOW + 1)) return false;
     if (S.ya && !inRange(c, S.ya, S.yb)) return false;
-    if (skip !== 'tag' && S.tag && c._t.indexOf(S.tag) < 0) return false;
+    if (skip !== 'tag' && S.tag.length && !S.tag.some(function (t) { return c._t.indexOf(t) > -1; })) return false;
     if (S.q) { var w = S.q.toLowerCase().split(/\s+/).filter(Boolean); for (var i = 0; i < w.length; i++) if (c._s.indexOf(w[i]) < 0) return false; }
     return true;
   }
@@ -217,6 +219,7 @@
 
   /* ---------- filter column ---------- */
   function chip(kids, on, fn, cls) { return h('button', { class: 'cpc-chip ' + (cls || ''), type: 'button', 'aria-pressed': on ? 'true' : 'false', onclick: fn }, kids); }
+  function tog(arr, v) { var i = arr.indexOf(v); if (i < 0) arr.push(v); else arr.splice(i, 1); }
   function renderFilters() {
     var a = S.act, x = S.exp; S.act = S.exp = true;
     var base = D.filter(function (c) { return match(c); }); S.act = a; S.exp = x;
@@ -229,28 +232,28 @@
     ])]));
     var tc = {}; D.forEach(function (c) { if (match(c, 'tag')) c._t.forEach(function (t) { tc[t] = (tc[t] || 0) + 1; }); });
     var tags = Object.keys(tc).sort(function (p, q) { return tc[q] - tc[p] || p.localeCompare(q); });
-    if (S.tag) tags = [S.tag].concat(tags.filter(function (t) { return t !== S.tag; }));
-    var chips = tags.slice(0, tagN).map(function (t) { return chip([t, h('small', { text: String(tc[t] || 0) })], S.tag === t, function () { S.tag = S.tag === t ? '' : t; go(true); }); });
+    if (S.tag.length) tags = S.tag.concat(tags.filter(function (t) { return S.tag.indexOf(t) < 0; }));
+    var chips = tags.slice(0, Math.max(tagN, S.tag.length)).map(function (t) { return chip([t, h('small', { text: String(tc[t] || 0) })], S.tag.indexOf(t) > -1, function () { tog(S.tag, t); go(true); }); });
     if (tags.length > tagN) chips.push(h('button', { class: 'cpc-chip more', type: 'button', text: 'Load more (' + (tags.length - tagN) + ')', onclick: function () { tagN += TAGSTEP; renderFilters(); } }));
     else if (tagN > TAGSTEP) chips.push(h('button', { class: 'cpc-chip more', type: 'button', text: 'Show fewer', onclick: function () { tagN = TAGSTEP; renderFilters(); } }));
     f.appendChild(h('div', {}, [h('h2', { class: 'cpc-h', text: 'Theme' }), h('div', { class: 'cpc-chips' }, chips.length ? chips : [h('small', { text: 'No tags in this selection' })])]));
     f.appendChild(h('div', {}, [h('h2', { class: 'cpc-h', text: 'Ink colour' }), h('div', { class: 'cpc-chips' },
-      Object.keys(INK).map(function (k) { return chip([h('span', { class: 'swatch', style: 'background:' + INK[k] }), k], S.ink === k, function () { S.ink = S.ink === k ? '' : k; go(true); }); }))]));
+      Object.keys(INK).map(function (k) { return chip([h('span', { class: 'swatch', style: 'background:' + INK[k] }), k], S.ink.indexOf(k) > -1, function () { tog(S.ink, k); go(true); }); }))]));
     var pv = {}, max = 1;
     D.forEach(function (c) { pv[c.prov] = pv[c.prov] || [0, 0]; if (match(c, 'prov')) pv[c.prov][expired(c) ? 1 : 0]++; });
     Object.keys(pv).forEach(function (k) { max = Math.max(max, pv[k][0] + pv[k][1]); });
     f.appendChild(h('div', {}, [h('h2', { class: 'cpc-h', text: 'Province or territory' })].concat(
       Object.keys(pv).sort(function (p, q) { return (pv[q][0] + pv[q][1]) - (pv[p][0] + pv[p][1]) || p.localeCompare(q); }).map(function (k) {
-        return h('button', { class: 'cpc-prov', type: 'button', 'aria-pressed': S.prov === k ? 'true' : 'false', 'aria-label': k + ': ' + pv[k][0] + ' active, ' + pv[k][1] + ' expired',
-          onclick: function () { S.prov = S.prov === k ? '' : k; go(true); } }, [
+        return h('button', { class: 'cpc-prov', type: 'button', 'aria-pressed': S.prov.indexOf(k) > -1 ? 'true' : 'false', 'aria-label': k + ': ' + pv[k][0] + ' active, ' + pv[k][1] + ' expired',
+          onclick: function () { tog(S.prov, k); go(true); } }, [
           h('span', { class: 'n', text: k }),
           h('span', { class: 'bar' }, [h('i', { style: 'width:' + (pv[k][0] / max * 100) + '%' }), h('i', { style: 'width:' + (pv[k][1] / max * 100) + '%' })]),
           h('span', { class: 'c mono', text: String(pv[k][0] + pv[k][1]) })
         ]);
       }))));
-    if (S.q || S.prov || S.tag || S.ink || S.ya || S.soon || !S.act || !S.exp)
+    if (S.q || S.prov.length || S.tag.length || S.ink.length || S.ya || S.soon || !S.act || !S.exp)
       f.appendChild(h('button', { class: 'cpc-clear', type: 'button', text: 'Clear all filters', onclick: function () {
-        S.q = S.prov = S.tag = S.ink = ''; S.ya = S.yb = null; S.soon = false; S.act = S.exp = true; el.search.value = ''; go(true); } }));
+        S.q = ''; S.prov = []; S.tag = []; S.ink = []; S.ya = S.yb = null; S.soon = false; S.act = S.exp = true; el.search.value = ''; go(true); } }));
   }
   function go(fit) { S.page = 1; update(fit); }
 
@@ -655,7 +658,7 @@
         field('Design', c.design || '—', 'wide'),
         field('Notes', c.notes, 'wide'),
         c.tags ? h('div', { class: 'cpc-f wide' }, [h('span', { class: 'k', text: 'Tags' }), h('span', { class: 'cpc-chips' }, c.tags.map(function (t) {
-          return h('button', { class: 'cpc-chip', type: 'button', text: t, onclick: function () { S.tag = t.toLowerCase(); S.id = ''; renderDetail(); go(true); } }); }))]) : null
+          return h('button', { class: 'cpc-chip', type: 'button', text: t, onclick: function () { S.tag = [t.toLowerCase()]; S.id = ''; renderDetail(); go(true); } }); }))]) : null
       ])
     ];
     var chain = versions(c), ver = chain.length > 1 ? chain.map(function (o, i) {
