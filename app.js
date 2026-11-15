@@ -70,6 +70,7 @@
     if (S.page > 1) p.set('page', S.page);
     if (S.cmp.length) p.set('cmp', S.cmp.join(','));
     if (S.cmpOpen && S.cmp.length) p.set('compare', '1');
+    if (S.about) p.set('about', '1');
     var s = p.toString();
     history.replaceState(null, '', s ? '#' + s : location.pathname + location.search);
   }
@@ -83,7 +84,7 @@
     if (!SORTS[S.sort]) S.sort = 'prov';
     S.dir = p.get('dir') === 'up' ? 1 : p.get('dir') === 'down' ? -1 : defDir(S.sort); S.id = p.get('id') || '';
     S.per = p.get('per') === 'all' ? 'all' : (parseInt(p.get('per'), 10) || 50); S.page = parseInt(p.get('page'), 10) || 1;
-    S.cmp = (p.get('cmp') || '').split(',').filter(Boolean).slice(0, CMPMAX); S.cmpOpen = p.get('compare') === '1';
+    S.cmp = (p.get('cmp') || '').split(',').filter(Boolean).slice(0, CMPMAX); S.cmpOpen = p.get('compare') === '1'; S.about = p.get('about') === '1';
   }
 
   /* ---------- filtering ---------- */
@@ -137,6 +138,7 @@
     var top = h('header', { class: 'cpc-top' }, [
       h('img', { class: 'cpc-logo', src: BASE + 'logo.png', alt: '', width: 64, height: 64 }),
       h('div', { class: 'cpc-ttl' }, [h('h1', { class: 'cpc-title', text: "Canada's Pictorial Cancels" }), el.sub = h('p', { class: 'cpc-sub' })]),
+      h('button', { class: 'cpc-aboutb', type: 'button', text: 'About', 'aria-haspopup': 'dialog', onclick: function () { openAbout(); } }),
       h('nav', { class: 'cpc-tabs', 'aria-label': 'Views' }, [el.tabMap, el.tabGal, el.tabTl])
     ]);
     el.count = h('span', { class: 'cpc-count', role: 'status' });
@@ -186,7 +188,8 @@
     el.tray = h('div', { class: 'cpc-tray', role: 'region', 'aria-label': 'Comparison', hidden: true });
     el.cmp = h('div', { class: 'cpc-compare', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Compare cancels', hidden: true });
     root.appendChild(top); root.appendChild(bar); root.appendChild(el.body); root.appendChild(el.tray); root.appendChild(el.cmp);
-    document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && S.cmpOpen && !document.querySelector('.cpc-lightbox')) closeCompare(); });
+    el.about = h('div', { class: 'cpc-about', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'About this project', hidden: true }); root.appendChild(el.about);
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && S.cmpOpen && !document.querySelector('.cpc-lightbox')) closeCompare(); if (e.key === 'Escape' && S.about) closeAbout(); });
   }
   function paintStrip() {
     el.mapWrap.classList.toggle('nostrip', !S.strip); el.strip.hidden = !S.strip;
@@ -376,6 +379,50 @@
     filtered.slice(from, from + per).forEach(function (c) { frag.appendChild(card(c)); });
     el.grid.appendChild(frag);
     el.tools2.appendChild(pager());
+  }
+
+  /* ---------- about ---------- */
+  var PEOPLE = [
+    ['Linda', 'Website administrator', 'Montreal', 'tigerbike-1.jpg', [['Website', 'https://lindasartworld.wordpress.com/'], ['Instagram', 'https://www.instagram.com/lindapolytope/'], ['Facebook', 'https://www.facebook.com/linda.polytope/']]],
+    ['Autumn', 'Contributor', 'Calgary', 'autumn-1.jpeg', [['Blog', 'https://stamp-licker.blogspot.com/'], ['Instagram', 'https://www.instagram.com/ordinarylionpostcards/']]],
+    ['Lizi', 'Contributor', 'Vancouver', 'lizi-1.jpg', [['Instagram', 'https://www.instagram.com/lizi.collections/']]],
+    ['Rebecca', 'Contributor', 'Toronto', 'rebecca-1.jpg', [['Instagram', 'https://instagram.com/viaairmailstationery']]],
+    ['Stephanie', 'Contributor', 'Vancouver', 'stephanie-3.jpg', [['Instagram', 'https://www.instagram.com/shescreams.postcard/'], ['Facebook', 'https://www.facebook.com/stephanieannmackay']]]
+  ];
+  function ext(href, text) { return h('a', { href: href, target: '_blank', rel: 'noopener', text: text }); }
+  function openAbout() { S.about = true; renderAbout(); writeHash(); }
+  function closeAbout() { S.about = false; el.about.hidden = true; el.about.innerHTML = ''; document.documentElement.style.overflow = ''; writeHash(); }
+  function renderAbout() {
+    var a = el.about, nP = {}; D.forEach(function (c) { nP[c.prov] = 1; });
+    var stories = D.filter(function (c) { return c.story; });
+    a.innerHTML = ''; a.hidden = false; document.documentElement.style.overflow = 'hidden';
+    var close = h('button', { class: 'x', type: 'button', 'aria-label': 'Close', text: '×', onclick: closeAbout });
+    var body = h('div', { class: 'in' }, [
+      h('header', { class: 'hd' }, [h('img', { src: BASE + 'logo.png', alt: '', width: 72, height: 72 }), h('div', {}, [h('p', { class: 'eb', text: 'About' }), h('h2', { text: "Canada's Pictorial Cancels" })]), close]),
+      h('section', {}, [
+        h('p', { class: 'lead', text: 'This site gathers information about the regular pictorial cancels offered by post offices across Canada, the world’s second-largest country. First-day-of-issue cancels are not included.' }),
+        h('p', {}, ['Canada Post offers a wealth of beautifully designed pictorial cancels, but collecting them can be a challenge: the few places online where cancel information can be found, such as ', ext('https://stampraider.blogspot.com/p/canada-post-pictoral-cancels.html', 'this blog post from Stamp Raider'), ' and ', ext('https://www.canadapost-postescanada.ca/cpc/en/personal/collectibles/pictorial-cancels.page', 'Canada Post’s own list'), ', are far from complete, and none of them gives cancel dimensions. This site aims to fill that gap.']),
+        h('ul', { class: 'stats' }, [h('li', {}, [h('b', { text: String(D.length) }), ' cancels']), h('li', {}, [h('b', { text: String(Object.keys(nP).length) }), ' provinces and territories']), h('li', {}, [h('b', { text: String(D.filter(function (c) { return !expired(c); }).length) }), ' still in use'])])
+      ]),
+      h('section', {}, [h('h3', { text: 'How a cancel works' }),
+        h('p', { text: 'A pictorial cancel is a rubber stamp made by Canada Post. Its date uses rotating dials: the day and month turn separately, while the year is a single band of 12 years (for example 2020 to 2031). So most designs are made to last 12 years. After that, the post office and Canada Post decide whether to renew the same design, change it slightly, or retire it. A few are much shorter-lived: BP St-Valentin gets a new design every year.' }),
+        h('p', {}, [ext('https://canadacancel.wordpress.com/2024/04/02/dissecting-canada-posts-cancel/', 'Read more: Dissecting Canada Post’s cancel →')])]),
+      stories.length ? h('section', {}, [h('h3', { text: 'Design stories' }), h('p', { text: 'Some cancels in this collection were designed by our team. Their stories tell how each design came about.' }),
+        h('div', { class: 'stories' }, stories.map(function (c) { return h('a', { class: 'st', href: c.story, target: '_blank', rel: 'noopener' }, [h('img', { src: thumb(c), alt: '', loading: 'lazy', width: 72, height: 72 }), h('span', {}, [h('strong', { text: c.po }), h('small', { text: label(c) })])]); }))]) : null,
+      h('section', {}, [h('h3', { text: 'The team' }), h('div', { class: 'people' }, PEOPLE.map(function (p) {
+        return h('div', { class: 'pp' }, [h('img', { src: 'https://canadacancel.wordpress.com/wp-content/uploads/' + (p[3] === 'rebecca-1.jpg' ? '2024/06/' : '2024/03/') + p[3] + '?w=200', alt: '', loading: 'lazy', width: 72, height: 72 }),
+          h('div', {}, [h('strong', { text: p[0] }), h('small', { text: p[1] + ' · ' + p[2] }), h('span', { class: 'ln' }, p[4].map(function (l) { return ext(l[1], l[0]); }))])]); }))]),
+      h('section', { class: 'two' }, [
+        h('div', {}, [h('h3', { text: 'Know a cancel that’s missing?' }), h('p', { text: 'Tell us about it and we’ll add it to the collection.' }), h('a', { class: 'cpc-btn primary', href: 'https://airtable.com/appYNSlTbmzBhwq3o/pagI8bgsoflVMGmYB/form', target: '_blank', rel: 'noopener', text: 'Report a missing cancel' })]),
+        h('div', {}, [h('h3', { text: 'Contact' }), h('p', {}, [ext('mailto:deldal@gmail.com', 'deldal@gmail.com'), h('br'), ext('https://www.instagram.com/canada.cancel/', 'Instagram: @canada.cancel')])])
+      ]),
+      h('section', { class: 'fine' }, [
+        h('p', { text: 'Thank you to A. Andriasian for donations that support this project.' }),
+        h('p', {}, ['Everything on this site is licensed under ', ext('https://creativecommons.org/licenses/by-nc/4.0/', 'Creative Commons Attribution-NonCommercial (CC BY-NC)'), '. Feel free to use it for non-commercial purposes.']),
+        updated ? h('p', { text: 'Data last updated ' + updated + '.' }) : null
+      ])
+    ]);
+    a.appendChild(h('div', { class: 'bg', onclick: closeAbout })); a.appendChild(body); close.focus();
   }
 
   /* ---------- timeline ---------- */
@@ -716,6 +763,7 @@
     var pg = S.page; setView(S.view); update(true); if (pg > 1 && S.view === 'gallery') { S.page = pg; renderGallery(); writeHash(); }
     S.cmp = S.cmp.filter(function (id) { return byId[id]; }); renderTray(); if (S.cmpOpen) renderCompare();
     if (S.id && byId[S.id]) select(S.id); else S.id = '';
+    if (S.about) renderAbout();
   }).catch(function () { el.count.textContent = 'The cancel list could not be loaded. Please try again later.'; });
-  window.addEventListener('hashchange', function () { var id = S.id; readHash(); el.search.value = S.q; setView(S.view); update(true); if (S.id !== id) select(S.id); renderTray(); if (S.cmpOpen) renderCompare(); else if (!el.cmp.hidden) { el.cmp.hidden = true; document.documentElement.style.overflow = ''; } });
+  window.addEventListener('hashchange', function () { var id = S.id; readHash(); el.search.value = S.q; setView(S.view); update(true); if (S.id !== id) select(S.id); renderTray(); if (S.cmpOpen) renderCompare(); else if (!el.cmp.hidden) { el.cmp.hidden = true; document.documentElement.style.overflow = ''; } if (S.about) renderAbout(); else if (!el.about.hidden) closeAbout(); });
 })();
