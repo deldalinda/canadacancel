@@ -734,9 +734,12 @@
     var out = ['<?xml version="1.0" encoding="UTF-8"?>', '<kml xmlns="http://www.opengis.net/kml/2.2"><Document>',
       '<name>' + x("Canada's Pictorial Cancels (" + sel.length + ')') + '</name>', style('active', 'ff33c920'), style('expired', 'ff481de1')];
     sel.forEach(function (c) {
-      out.push('<Placemark><name>' + x(c.po + (c.nick ? ' \u2013 ' + cap(c.nick) : '')) + '</name><styleUrl>#' + st(c) + '</styleUrl><ExtendedData>' +
+      // same shape as a Google My Maps export: the image in the description as HTML, and again in gx_media_links
+      out.push('<Placemark><name>' + x(c.po + (c.nick ? ' \u2013 ' + cap(c.nick) : '')) + '</name>' +
+        '<description><![CDATA[<img src="' + full(c) + '" height="200" width="auto" />]]></description>' +
+        '<styleUrl>#' + st(c) + '</styleUrl><ExtendedData>' +
         cols.map(function (k) { var v = k[1] === 'status' ? stName(c) : c[k[1]]; return v == null || v === '' ? '' : '<Data name="' + x(k[0]) + '"><value>' + x(v) + '</value></Data>'; }).join('') +
-        '<Data name="gx_media_links"><value>' + x(full(c)) + '</value></Data></ExtendedData>' +
+        '<Data name="gx_media_links"><value><![CDATA[' + full(c) + ']]></value></Data></ExtendedData>' +
         '<Point><coordinates>' + c.lng + ',' + c.lat + ',0</coordinates></Point></Placemark>');
     });
     out.push('</Document></kml>');
