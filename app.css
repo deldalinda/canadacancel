@@ -405,3 +405,7 @@
 /* v31: logo + title link home */
 .cpc .cpc-home{display:flex;align-items:center;gap:14px 18px;min-width:0;text-decoration:none;color:inherit}
 .cpc .cpc-home:hover .cpc-title{color:var(--red-d)}
+/* v40: map area carried into Gallery and Timeline */
+.cpc-areanote{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;width:100%;padding:10px 14px;border-radius:12px;background:#E9EBEF;font-size:14px}
+.cpc-areanote .cpc-btn{margin-left:auto;height:34px;background:#fff}
+.cpc-tl .cpc-areanote{margin:10px 0 4px}
