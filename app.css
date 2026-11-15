@@ -402,3 +402,6 @@
 .cpc-about .two .cpc-btn{color:#fff!important;text-decoration:none}
 .cpc-about .fine{font-size:13px;color:var(--muted);border-top:1px solid var(--soft);padding-top:16px}
 @media (max-width:560px){.cpc-aboutb{margin-left:0}}
+/* v31: logo + title link home */
+.cpc .cpc-home{display:flex;align-items:center;gap:14px 18px;min-width:0;text-decoration:none;color:inherit}
+.cpc .cpc-home:hover .cpc-title{color:var(--red-d)}

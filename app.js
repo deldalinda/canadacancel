@@ -136,8 +136,9 @@
     el.tabGal = h('button', { class: 'cpc-tab', type: 'button', text: 'Gallery', onclick: function () { setView('gallery'); } });
     el.tabTl = h('button', { class: 'cpc-tab', type: 'button', text: 'Timeline', onclick: function () { setView('timeline'); } });
     var top = h('header', { class: 'cpc-top' }, [
-      h('img', { class: 'cpc-logo', src: BASE + 'logo.png', alt: '', width: 64, height: 64 }),
-      h('div', { class: 'cpc-ttl' }, [h('h1', { class: 'cpc-title', text: "Canada's Pictorial Cancels" }), el.sub = h('p', { class: 'cpc-sub' })]),
+      h('a', { class: 'cpc-home', href: 'https://lindasartworld.ca/canadacancels/', title: 'Canada\u2019s Pictorial Cancels: home' }, [
+        h('img', { class: 'cpc-logo', src: BASE + 'logo.png', alt: '', width: 64, height: 64 }),
+        h('div', { class: 'cpc-ttl' }, [h('h1', { class: 'cpc-title', text: "Canada's Pictorial Cancels" }), el.sub = h('p', { class: 'cpc-sub' })])]),
       h('button', { class: 'cpc-aboutb', type: 'button', text: 'About', 'aria-haspopup': 'dialog', onclick: function () { openAbout(); } }),
       h('nav', { class: 'cpc-tabs', 'aria-label': 'Views' }, [el.tabMap, el.tabGal, el.tabTl])
     ]);
