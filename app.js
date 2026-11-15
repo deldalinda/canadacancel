@@ -165,8 +165,8 @@
       h('label', { class: 'cpc-search' }, [svg('M11 4a7 7 0 100 14 7 7 0 000-14zM20 20l-3.5-3.5'), el.search]),
       h('div', { class: 'cpc-year' }, [el.count, h('label', {}, [el.yOn, 'in use between']), el.yOut, el.yDual]),
       el.sortBox,
-      el.dl = h('select', { class: 'cpc-btn', 'aria-label': 'Download the cancels shown', onchange: function () { var v = el.dl.value; el.dl.value = ''; if (v === 'csv') csv(); else if (v) zip(v); } }, [
-        h('option', { value: '', text: 'Download…' }), h('option', { value: 'csv', text: 'List only (CSV)' }),
+      el.dl = h('select', { class: 'cpc-btn', 'aria-label': 'Download the selection', onfocus: paintDl, onmousedown: paintDl, onchange: function () { var v = el.dl.value; el.dl.value = ''; if (v === 'csv') csv(); else if (v) zip(v); } }, [
+        h('option', { value: '', text: 'Download the selection…' }), el.dlHead = h('option', { value: '', disabled: '', text: '' }), h('option', { value: 'csv', text: 'List only (CSV)' }),
         h('option', { value: 'thumb', text: 'List + small images (ZIP)' }), h('option', { value: 'full', text: 'List + full images (ZIP)' })])
     ]);
     el.fbody = h('div', { style: 'display:contents' });
@@ -704,23 +704,32 @@
       }
     }, function () { if (el.nearB) el.nearB.classList.remove('busy'); toast('Could not get your location'); }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 });
   }
+  /* the selection: what is on screen now — filters, plus the visible part of the map in map view */
+  function selection() {
+    if (S.view === 'map' && leafletReady) { var b = map.getBounds(); return filtered.filter(function (c) { return b.contains([c.lat, c.lng]); }); }
+    return filtered;
+  }
+  function paintDl() {
+    var n = selection().length;
+    el.dlHead.textContent = n + (n === 1 ? ' cancel' : ' cancels') + (S.view === 'map' ? ' in this part of the map' : ' matching your filters');
+  }
   function fname(c) { return (c.prov + '/' + c.po + (c.nick ? ' - ' + c.nick : '') + ' - ' + c.id.slice(-5)).replace(/[\\:*?"<>|]+/g, '').replace(/\s+/g, ' ') + '.jpg'; }
   function table(withFile) {
-    var cols = [['Post Office', 'po'], ['City', 'city'], ['Province', 'prov'], ['Status', 'status'], ['Colour', 'ink'], ['Run Dates', 'run'], ['Design', 'design'], ['Nickname', 'nick'], ['Designer', 'designer'], ['Tags', 'tags'], ['Latitude', 'lat'], ['Longitude', 'lng'], ['Address', 'addr']];
+    var cols = [['Post Office', 'po'], ['City', 'city'], ['Province', 'prov'], ['Status', 'status'], ['Colour', 'ink'], ['Run Dates', 'run'], ['Design', 'design'], ['Nickname', 'nick'], ['Designer', 'designer'], ['Tags', 'tags'], ['Latitude', 'lat'], ['Longitude', 'lng'], ['Address', 'addr'], ['Notes', 'notes'], ['Design story', 'story']];
     var q = function (v) { v = v == null ? '' : Array.isArray(v) ? v.join(', ') : String(v); return '"' + v.replace(/"/g, '""').replace(/\n/g, ', ') + '"'; };
     var head = cols.map(function (c) { return q(c[0]); }).concat([q(withFile ? 'Image file' : 'Image link')]).join(',');
-    return '\ufeff' + [head].concat(filtered.map(function (r) {
+    return '\ufeff' + [head].concat(selection().map(function (r) {
       return cols.map(function (c) { return q(c[1] === 'status' ? stName(r) : r[c[1]]); }).concat([q(withFile ? 'images/' + fname(r) : full(r))]).join(',');
     })).join('\r\n');
   }
   function save(blob, name) { var a = h('a', { href: URL.createObjectURL(blob), download: name }); document.body.appendChild(a); a.click(); a.remove(); }
-  function csv() { save(new Blob([table(false)], { type: 'text/csv' }), 'pictorial-cancels.csv'); }
+  function csv() { if (!selection().length) return toast('No cancels to download'); save(new Blob([table(false)], { type: 'text/csv' }), 'pictorial-cancels.csv'); }
   function zip(kind) {
-    var n = filtered.length, mb = Math.round(n * (kind === 'full' ? 0.14 : 0.024));
+    var sel = selection(), n = sel.length, mb = Math.round(n * (kind === 'full' ? 0.14 : 0.024));
     if (!n) return toast('No cancels to download');
     if (n > 60 && !confirm('Download ' + n + ' cancels with ' + (kind === 'full' ? 'full-size' : 'small') + ' images? About ' + Math.max(1, mb) + ' MB.')) return;
     function go2() {
-      var z = new JSZip(), list = filtered.slice(), done = 0, i = 0, run = 0, failed = 0;
+      var z = new JSZip(), list = sel.slice(), done = 0, i = 0, run = 0, failed = 0;
       z.file('pictorial-cancels.csv', table(true));
       toast('Preparing ' + n + ' images…');
       return new Promise(function (res) {
