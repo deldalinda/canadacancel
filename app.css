@@ -423,3 +423,11 @@
 /* v42: image size slider sets cancels per row on every screen */
 .cpc-grid{grid-template-columns:repeat(var(--cols,4),minmax(0,1fr))!important}
 @media (max-width:560px){.cpc-grid{gap:10px}}
+/* v44: phones — Filters + Search share one row, placed after Download */
+@media (max-width:560px){
+  .cpc-bar .cpc-year{order:1}
+  .cpc-bar .cpc-sort{order:2}
+  .cpc-bar>select.cpc-btn{order:3}
+  .cpc-bar .cpc-filtertoggle{order:4;flex:0 0 auto}
+  .cpc-bar .cpc-search{order:5;flex:1 1 0;min-width:0;max-width:none}
+}
