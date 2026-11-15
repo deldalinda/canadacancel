@@ -398,6 +398,14 @@
     el.tools.appendChild(h('label', {}, ['Per page', sel, 'of ' + total + (total === 1 ? ' result' : ' results')]));
     el.tools.appendChild(pager());
     el.tools.appendChild(h('label', { class: 'cpc-zoom' }, ['Image size', zoom]));
+    /* phones: three fixed sizes instead of the slider — 3, 2 or 1 cancels per row */
+    var cols = +(store('cpc-cols') || 2), sizes = h('div', { class: 'cpc-sizes', role: 'group', 'aria-label': 'Image size' }, [h('span', { text: 'Image size' })].concat(
+      [[3, 'Small'], [2, 'Medium'], [1, 'Large']].map(function (o) {
+        return h('button', { class: 'cpc-btn', type: 'button', 'aria-pressed': cols === o[0] ? 'true' : 'false', text: o[1], onclick: function () {
+          store('cpc-cols', o[0]); root.style.setProperty('--cols', o[0]); sizes.querySelectorAll('button').forEach(function (b) { b.setAttribute('aria-pressed', b === this ? 'true' : 'false'); }, this); } });
+      })));
+    root.style.setProperty('--cols', cols);
+    el.tools.appendChild(sizes);
     if (!total) { el.grid.appendChild(h('div', { class: 'cpc-empty', style: 'grid-column:1/-1', text: 'No cancels match these filters.' })); return; }
     var frag = document.createDocumentFragment();
     list.slice(from, from + per).forEach(function (c) { frag.appendChild(card(c)); });
