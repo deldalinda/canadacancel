@@ -173,7 +173,7 @@
         h('option', { value: '', text: 'Download the selection…' }), el.dlHead = h('option', { value: '', disabled: '', text: '' }), h('option', { value: 'csv', text: 'List only (CSV)' }), h('option', { value: 'kml', text: 'Map file with images, for Google My Maps (KML)' }),
         h('option', { value: 'thumb', text: 'List + small images (ZIP)' }), h('option', { value: 'full', text: 'List + full images (ZIP)' })])
     ]);
-    el.fbody = h('div', { style: 'display:contents' });
+    el.fbody = h('div', { class: 'cpc-fbody' });
     el.grip = h('button', { class: 'cpc-grip', type: 'button', 'aria-label': 'Drag to resize the filter panel', title: 'Drag to resize' });
     el.filters = h('aside', { class: 'cpc-filters', 'aria-label': 'Filters' }, [el.fbody, el.grip]);
     grip();

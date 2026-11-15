@@ -431,3 +431,9 @@
   .cpc-bar .cpc-filtertoggle{order:4;flex:0 0 auto}
   .cpc-bar .cpc-search{order:5;flex:1 1 0;min-width:0;max-width:none}
 }
+/* v45: filter column stays in view while scrolling (like the cancel panel); long lists scroll inside it */
+.cpc-fbody{display:flex;flex-direction:column;gap:16px;min-width:0}
+@media (min-width:1101px){
+  .cpc-filters{position:sticky;top:12px;align-self:start}
+  .cpc-fbody{max-height:calc(100vh - 24px);overflow-y:auto;overscroll-behavior:contain;padding-right:6px;scrollbar-width:thin}
+}
