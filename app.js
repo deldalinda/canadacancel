@@ -718,10 +718,9 @@
     var cols = [['Post Office', 'po'], ['City', 'city'], ['Province', 'prov'], ['Status', 'status'], ['Colour', 'ink'], ['Run Dates', 'run'], ['Design', 'design'], ['Nickname', 'nick'], ['Designer', 'designer'], ['Tags', 'tags'], ['Latitude', 'lat'], ['Longitude', 'lng'], ['Address', 'addr'], ['Notes', 'notes'], ['Design story', 'story']];
     var q = function (v) { v = v == null ? '' : Array.isArray(v) ? v.join(', ') : String(v); return '"' + v.replace(/"/g, '""').replace(/\n/g, ', ') + '"'; };
     // header names stay unquoted: a quote right after the byte-order mark makes Google My Maps reject the file
-    // gx_media_links: Google My Maps / Google Earth show the image at this web address in each pin's info box
-    var head = cols.map(function (c) { return c[0]; }).concat(withFile ? ['Image file'] : [], ['gx_media_links']).join(',');
+    var head = cols.map(function (c) { return c[0]; }).concat([withFile ? 'Image file' : 'Image link']).join(',');
     return '\ufeff' + [head].concat(selection().map(function (r) {
-      return cols.map(function (c) { return q(c[1] === 'status' ? stName(r) : r[c[1]]); }).concat(withFile ? [q('images/' + fname(r))] : [], [q(full(r))]).join(',');
+      return cols.map(function (c) { return q(c[1] === 'status' ? stName(r) : r[c[1]]); }).concat([q(withFile ? 'images/' + fname(r) : full(r))]).join(',');
     })).join('\r\n');
   }
   function save(blob, name) { var a = h('a', { href: URL.createObjectURL(blob), download: name }); document.body.appendChild(a); a.click(); a.remove(); }
