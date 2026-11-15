@@ -384,6 +384,18 @@
     box.appendChild(b('›', p + 1, false, 'Next page'));
     return box;
   }
+  function applyCols() {
+    if (!el.zoom) return;
+    var w = el.grid.clientWidth || el.galWrap.clientWidth || root.clientWidth || 360;
+    var m = Math.max(2, Math.floor((w + 14) / (96 + 14)));
+    var c = +store('cpc-cols') || Math.max(1, Math.round(w / 210));
+    c = Math.min(m, Math.max(1, c));
+    root.style.setProperty('--cols', c);
+    el.zoom.max = m; el.zoom.value = m + 1 - c;
+    el.zoom.setAttribute('aria-valuetext', c + (c === 1 ? ' cancel' : ' cancels') + ' per row');
+  }
+  window.addEventListener('resize', debounce(applyCols, 150));
+  var colsObs = window.ResizeObserver ? new ResizeObserver(debounce(applyCols, 100)) : null, colsObserved = false;
   function renderGallery() {
     var list = listed(), total = list.length, n = pages(); if (S.page > n) S.page = n;
     var per = S.per === 'all' ? total : S.per, from = (S.page - 1) * per, opts = [];
@@ -391,21 +403,15 @@
     var sel = h('select', { 'aria-label': 'Results per page', onchange: function () { S.per = sel.value === 'all' ? 'all' : +sel.value; S.page = 1; renderGallery(); writeHash(); } },
       opts.map(function (o) { return h('option', { value: o, text: String(o) }); }).concat([h('option', { value: 'all', text: 'All' })]));
     sel.value = S.per === 'all' || S.per >= total ? 'all' : String(S.per);
-    var zoom = h('input', { type: 'range', min: 110, max: 420, step: 10, value: parseInt(getComputedStyle(root).getPropertyValue('--cell'), 10) || 180, 'aria-label': 'Image size',
-      oninput: function () { root.style.setProperty('--cell', zoom.value + 'px'); store('cpc-cell', zoom.value); } });
+    /* image size = cancels per row; the slider has as many steps as fit on this screen (right = bigger images) */
+    el.zoom = h('input', { type: 'range', min: 1, max: 2, step: 1, value: 1, 'aria-label': 'Image size',
+      oninput: function () { var m = +el.zoom.max; store('cpc-cols', m + 1 - el.zoom.value); applyCols(); } });
     el.tools.innerHTML = ''; el.tools2.innerHTML = ''; el.grid.innerHTML = '';
     var note = areaNote(); if (note) el.tools.appendChild(note);
     el.tools.appendChild(h('label', {}, ['Per page', sel, 'of ' + total + (total === 1 ? ' result' : ' results')]));
     el.tools.appendChild(pager());
-    el.tools.appendChild(h('label', { class: 'cpc-zoom' }, ['Image size', zoom]));
-    /* phones: three fixed sizes instead of the slider — 3, 2 or 1 cancels per row */
-    var cols = +(store('cpc-cols') || 2), sizes = h('div', { class: 'cpc-sizes', role: 'group', 'aria-label': 'Image size' }, [h('span', { text: 'Image size' })].concat(
-      [[3, 'Small'], [2, 'Medium'], [1, 'Large']].map(function (o) {
-        return h('button', { class: 'cpc-btn', type: 'button', 'aria-pressed': cols === o[0] ? 'true' : 'false', text: o[1], onclick: function () {
-          store('cpc-cols', o[0]); root.style.setProperty('--cols', o[0]); sizes.querySelectorAll('button').forEach(function (b) { b.setAttribute('aria-pressed', b === this ? 'true' : 'false'); }, this); } });
-      })));
-    root.style.setProperty('--cols', cols);
-    el.tools.appendChild(sizes);
+    el.tools.appendChild(h('label', { class: 'cpc-zoom' }, ['Image size', el.zoom]));
+    applyCols(); if (colsObs && !colsObserved) { colsObs.observe(el.galWrap); colsObserved = true; }
     if (!total) { el.grid.appendChild(h('div', { class: 'cpc-empty', style: 'grid-column:1/-1', text: 'No cancels match these filters.' })); return; }
     var frag = document.createDocumentFragment();
     list.slice(from, from + per).forEach(function (c) { frag.appendChild(card(c)); });

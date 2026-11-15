@@ -409,20 +409,17 @@
 .cpc-areanote{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;width:100%;padding:10px 14px;border-radius:12px;background:#E9EBEF;font-size:14px}
 .cpc-areanote .cpc-btn{margin-left:auto;height:34px;background:#fff}
 .cpc-tl .cpc-areanote{margin:10px 0 4px}
-/* v41: phones — toolbar fits the screen; gallery sizes S/M/L */
+/* v41: phones — toolbar fits the screen */
 .cpc-bar>*{min-width:0;max-width:100%}
 .cpc-bar select.cpc-btn{max-width:100%;text-overflow:ellipsis}
-.cpc-sizes{display:none;align-items:center;gap:6px;margin-left:auto}
-.cpc-sizes>span{font-size:14px;margin-right:2px}
-.cpc-sizes .cpc-btn{height:36px;padding:0 12px;border-radius:18px}
-.cpc-sizes .cpc-btn[aria-pressed=true]{background:var(--ink);border-color:var(--ink);color:#fff}
 @media (max-width:560px){
   .cpc{overflow-x:hidden}
   .cpc-bar .cpc-sort{flex:1 1 100%;flex-wrap:wrap}
   .cpc-bar .cpc-sort select{flex:1 1 auto;min-width:0}
   .cpc-bar>select.cpc-btn{flex:1 1 100%;width:100%}
-  .cpc-zoom{display:none!important}
-  .cpc-sizes{display:flex;flex-wrap:wrap;margin-left:0}
-  .cpc-grid{grid-template-columns:repeat(var(--cols,2),minmax(0,1fr))!important;gap:10px}
   .cpc-tools label:first-child{flex-wrap:wrap}
+  .cpc-zoom{margin-left:0}
 }
+/* v42: image size slider sets cancels per row on every screen */
+.cpc-grid{grid-template-columns:repeat(var(--cols,4),minmax(0,1fr))!important}
+@media (max-width:560px){.cpc-grid{gap:10px}}
