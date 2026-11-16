@@ -421,7 +421,7 @@
 
   /* ---------- about ---------- */
   var PEOPLE = [
-    ['Linda', 'Website administrator', 'Montreal', 'tigerbike-1.jpg', [['Website', 'https://lindasartworld.wordpress.com/'], ['Instagram', 'https://www.instagram.com/lindapolytope/'], ['Facebook', 'https://www.facebook.com/linda.polytope/']]],
+    ['Linda', 'Website administrator', 'Montreal', 'tigerbike-1.jpg', [['Website', 'https://lindasartworld.ca/'], ['Instagram', 'https://www.instagram.com/lindapolytope/'], ['Facebook', 'https://www.facebook.com/linda.polytope/']]],
     ['Autumn', 'Contributor', 'Calgary', 'autumn-1.jpeg', [['Blog', 'https://stamp-licker.blogspot.com/'], ['Instagram', 'https://www.instagram.com/ordinarylionpostcards/']]],
     ['Lizi', 'Contributor', 'Vancouver', 'lizi-1.jpg', [['Instagram', 'https://www.instagram.com/lizi.collections/']]],
     ['Rebecca', 'Contributor', 'Toronto', 'rebecca-1.jpg', [['Instagram', 'https://instagram.com/viaairmailstationery']]],
