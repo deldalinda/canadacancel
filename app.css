@@ -437,3 +437,4 @@
   .cpc-filters{position:sticky;top:12px;align-self:start}
   .cpc-fbody{max-height:calc(100vh - 24px);overflow-y:auto;overscroll-behavior:contain;padding-right:6px;scrollbar-width:thin}
 }
+.cpc-howto{margin:0;font-size:14px}

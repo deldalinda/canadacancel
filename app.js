@@ -445,6 +445,9 @@
       h('section', {}, [h('h3', { text: 'How a cancel works' }),
         h('p', { text: 'A pictorial cancel is a rubber stamp made by Canada Post. Its date uses rotating dials: the day and month turn separately, while the year is a single band of 12 years (for example 2020 to 2031). So most designs are made to last 12 years. After that, the post office and Canada Post decide whether to renew the same design, change it slightly, or retire it. A few are much shorter-lived: BP St-Valentin gets a new design every year.' }),
         h('p', {}, [ext('https://canadacancel.wordpress.com/2024/04/02/dissecting-canada-posts-cancel/', 'Read more: Dissecting Canada Post’s cancel →')])]),
+      h('section', {}, [h('h3', { text: 'Collecting by mail' }),
+        h('p', { text: 'Most active cancels can be collected without leaving home. Our guide explains how to prepare covers, write to the postmaster and get them back.' }),
+        h('p', {}, [ext('https://canadacancel.wordpress.com/2026/11/24/how-to-collect-canadian-pictorial-cancels-by-mail/', 'How to collect Canadian pictorial cancels by mail →'), h('br'), h('span', { lang: 'fr' }, [ext('https://canadacancel.wordpress.com/2026/11/25/comment-collectionner-obliterations-illustrees-par-la-poste/', 'En français : Comment collectionner les oblitérations illustrées par la poste →')])])]),
       stories.length ? h('section', {}, [h('h3', { text: 'Design stories' }), h('p', { text: 'Some cancels in this collection were designed by our team. Their stories tell how each design came about.' }),
         h('div', { class: 'stories' }, stories.map(function (c) { return h('a', { class: 'st', href: c.story, target: '_blank', rel: 'noopener' }, [h('img', { src: thumb(c), alt: '', loading: 'lazy', width: 72, height: 72 }), h('span', {}, [h('strong', { text: c.po }), h('small', { text: label(c) })])]); }))]) : null,
       h('section', {}, [h('h3', { text: 'The team' }), h('div', { class: 'people' }, PEOPLE.map(function (p) {
@@ -690,6 +693,7 @@
         ]),
         h('div', { class: 'ax' }, [h('span', { text: String(Y0) }), h('span', { text: fuzzy ? 'striped = date unknown' : 'line = today' }), h('span', { text: String(Y1) })])
       ]),
+      !expired(c) ? h('p', { class: 'cpc-howto' }, [ext('https://canadacancel.wordpress.com/2026/11/24/how-to-collect-canadian-pictorial-cancels-by-mail/', 'How to request this cancel by mail →'), ' · ', h('span', { lang: 'fr' }, [ext('https://canadacancel.wordpress.com/2026/11/25/comment-collectionner-obliterations-illustrees-par-la-poste/', 'en français')])]) : null,
       c.story ? h('a', { class: 'cpc-storylink', href: c.story, target: '_blank', rel: 'noopener' }, [h('span', { class: 'cpc-story', text: 'Design story' }), h('span', { text: 'Read the design story →' })]) : null,
       h('div', { class: 'cpc-fields' }, [
         field('Status', [h('span', { class: 'dot ' + st(c) }), stName(c)], 'st-' + st(c)),
