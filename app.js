@@ -693,8 +693,6 @@
         ]),
         h('div', { class: 'ax' }, [h('span', { text: String(Y0) }), h('span', { text: fuzzy ? 'striped = date unknown' : 'line = today' }), h('span', { text: String(Y1) })])
       ]),
-      !expired(c) ? h('p', { class: 'cpc-howto' }, [ext('https://canadacancel.wordpress.com/2026/11/24/how-to-collect-canadian-pictorial-cancels-by-mail/', 'How to request this cancel by mail →'), ' · ', h('span', { lang: 'fr' }, [ext('https://canadacancel.wordpress.com/2026/11/25/comment-collectionner-obliterations-illustrees-par-la-poste/', 'en français')])]) : null,
-      c.page ? h('p', { class: 'cpc-howto' }, [h('a', { href: BASE + c.page, target: '_blank', rel: 'noopener', text: 'Page for this cancel →' })]) : null,
       c.story ? h('a', { class: 'cpc-storylink', href: c.story, target: '_blank', rel: 'noopener' }, [h('span', { class: 'cpc-story', text: 'Design story' }), h('span', { text: 'Read the design story →' })]) : null,
       h('div', { class: 'cpc-fields' }, [
         field('Status', [h('span', { class: 'dot ' + st(c) }), stName(c)], 'st-' + st(c)),
